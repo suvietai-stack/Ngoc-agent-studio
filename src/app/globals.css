@@ -9,3 +9,28 @@
 @media(max-width:760px){.ops-hero{flex-direction:column;padding:20px}.ops-hero h2{font-size:19px}.ops-toolbar{align-items:stretch;flex-direction:column}.ops-toolbar button{align-self:flex-start}.ops-inline select{width:100%}.ops-schedule{flex-wrap:wrap}.ops-rowbuttons{width:100%;justify-content:flex-start}.ops-bubble{max-width:97%}}
 
 .ops-url-form{display:flex;align-items:end;gap:10px;margin:12px 0 18px}.ops-url-form label{flex:1;display:grid;gap:7px;color:#39556a;font-weight:700}.ops-url-form button{white-space:nowrap}@media(max-width:760px){.ops-url-form{flex-direction:column;align-items:stretch}}
+
+/* Agent Workflow v3 */
+.workflow-board{display:grid;gap:16px}
+.workflow-heading{display:flex;align-items:flex-start;gap:12px}
+.workflow-heading h3{margin:0 0 5px}
+.workflow-heading p{margin:0;color:#6b7e8d;line-height:1.6}
+.workflow-icon{background:#e4f1f1;color:#216e78;border-radius:10px;padding:10px;flex-shrink:0}
+.workflow-form{display:grid;grid-template-columns:minmax(160px,.85fr) minmax(200px,1.6fr) auto;align-items:end;gap:12px}
+.workflow-form label{display:grid;gap:7px;color:#40556a;font-weight:700;min-width:0}
+.workflow-form input,.workflow-form select{width:100%;min-width:0}
+.workflow-board>small{line-height:1.5}
+.workflow-list{display:grid;gap:14px}
+.workflow-card{border:1px solid #e1e8ec;border-radius:12px;padding:17px;background:#fbfcfd}
+.workflow-card>header{display:flex;justify-content:space-between;gap:12px;align-items:start}
+.workflow-card>header>div{display:grid;gap:6px}
+.workflow-card>header b{font-size:14px;color:#243d51}
+.workflow-steps{display:grid;margin-top:14px}
+.workflow-step{display:flex;align-items:center;gap:12px;min-width:0;padding:12px 0;border-top:1px solid #e5ebef}
+.workflow-step-num{display:grid;place-items:center;flex-shrink:0;width:28px;height:28px;background:#eaf0f4;color:#617589;border-radius:100%;font-weight:800}
+.workflow-step-num.done{background:#dcefe7;color:#128063}
+.workflow-step-main{display:grid;gap:4px;flex:1;min-width:0}
+.workflow-step-main b{font-size:13px}
+.workflow-locked{display:inline-flex;align-items:center;gap:5px;color:#8292a0;font-size:11px}
+@media(max-width:840px){.workflow-form{grid-template-columns:1fr}.workflow-form button{justify-self:start}}
+@media(max-width:560px){.workflow-card>header{flex-wrap:wrap}.workflow-step{flex-wrap:wrap}.workflow-locked,.workflow-step>.ops-outline,.workflow-step>.chip{margin-left:40px}}

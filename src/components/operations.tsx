@@ -5,6 +5,7 @@ import {Bot,CalendarClock,CheckCircle2,Clock3,FileText,Globe2,Play,Plus,Send,Spa
 import type {WorkspaceData} from "@/lib/types";
 import {askDomAction,createCampaignAction,createScheduleAction,toggleScheduleAction,runScheduleNowAction,approveContentAction,seoAuditAction,updateProjectWebsiteAction} from "@/app/operations";
 import type {Result} from "@/app/actions";
+import {WorkflowBoard} from "@/components/workflows";
 
 type Tab="dom"|"automations"|"content";
 export function StudioOperations({tab,initial,filter,aiReady}:{tab:Tab;initial:WorkspaceData;filter:string;aiReady:boolean}){
@@ -29,6 +30,7 @@ export function StudioOperations({tab,initial,filter,aiReady}:{tab:Tab;initial:W
   </div><form className="ops-composer" onSubmit={ask}><textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3} maxLength={4000} required placeholder="Hỏi Đốm về SEO, kế hoạch marketing, công việc..." disabled={!aiReady||pending}/><button type="submit" className="primary" disabled={!aiReady||pending||question.trim().length<3}><Send size={16}/>{pending?"Đang nghĩ...":"Gửi Đốm"}</button></form></section>
  </>}
  {tab==="automations"&&<>
+  <WorkflowBoard initial={initial} filter={filter} selectedProject={selectedProject} onProjectChange={setSelected} aiReady={aiReady}/>
   <div className="ops-toolbar"><div><h3>Lịch tự động có thật</h3><p>Supabase Cron mỗi giờ kiểm tra lịch đến hạn, tạo công việc mới trong hàng đợi. Chạy AI và duyệt nội dung là bước riêng để tránh đăng nhầm.</p></div><button className="primary" onClick={()=>setShowForm(v=>!v)}><Plus size={16}/> Tạo lịch</button></div>
   <div className="panel"><h3>Bắt đầu nhanh</h3><p>Tạo 4 nhiệm vụ chuẩn SEO, Content, Social và Marketing cho dự án đang chọn, không cần API key.</p>
   <div className="ops-inline"><select aria-label="Chọn dự án" value={selectedProject} onChange={e=>setSelected(e.target.value)}>{projects.length===0?<option value="">Chưa có dự án</option>:projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>

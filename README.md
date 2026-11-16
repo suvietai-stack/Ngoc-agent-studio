@@ -55,3 +55,13 @@ Model mặc định `gpt-4.1-mini`. Các nút `Chạy AI` và chat Đốm chỉ 
 - `supabase/migrations/202611170002_automation.sql`
 
 Chỉ chạy migrations ở Supabase project `ngoc-agent-studio-db`. Tuyệt đối không chạy trên Base Sứ Việt. Cron hoạt động trong Postgres, không cần Vercel Cron/Service Role để thêm việc.
+
+## Agent Workflow v3 — Phê duyệt nối bước (2026-11-17)
+
+- Tạo chuỗi 3 công việc thực tế **SEO → Content → Social** trong tab **Tự động hóa**.
+- Mỗi bước dùng Agent đang bật phù hợp dự án hoặc dùng chung, không thay thế bằng Agent ngẫu nhiên.
+- Bước 2/3 bị chặn phía máy chủ cho đến khi bản nháp của bước ngay trước được **duyệt tại tab Nội dung**.
+- Khi chạy bước sau, bản nháp đã duyệt của bước trước được đưa vào ngữ cảnh AI, tối đa 6.500 ký tự.
+- Mọi lần chạy vẫn yêu cầu người dùng nhấn **Chạy AI**. Không tự đăng, gửi, xóa dữ liệu hay tự chạy API ngầm.
+- Migration cần áp dụng **chỉ trên** Supabase `ngoc-agent-studio-db`: `supabase/migrations/202611170003_agent_workflows.sql`.
+- Luồng phát hành: nhánh tính năng → kiểm tra preview Vercel → PR về `main` → production.
