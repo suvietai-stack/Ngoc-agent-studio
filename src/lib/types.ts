@@ -1,0 +1,2 @@
+export type Row={id:string;name?:string;title?:string;purpose?:string;instructions?:string;model?:string;enabled?:boolean;project_id?:string|null;category?:string;description?:string|null;website_url?:string|null;status?:string;brief?:string|null;content?:string;created_at?:string;connection_status?:string;state?:string;capabilities?:string[]};
+export type WorkspaceData={projects:Row[];agents:Row[];tasks:Row[];knowledge:Row[];integrations:Row[];runs:Row[]};
