@@ -77,7 +77,7 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
     const completed=w.steps.filter(t=>approved.has(t.id)).length;
     return <article className="workflow-card" key={w.id}>
      <header><div><b>{first?.title?.replace(/^SEO · /,"")||"Chiến dịch AI"}</b>
-      <small>{projectNames.get(first?.project_id)||"Dự án"} · {completed}/3 bước được duyệt</small></div>
+      <small>{projectNames.get(first?.project_id||"")||"Dự án"} · {completed}/3 bước được duyệt</small></div>
       <span className="chip">{completed===3?"Đã duyệt 3 bước":"Đang xử lý"}</span></header>
      <div className="workflow-steps">{w.steps.map(task=>{
       const unlocked=!task.depends_on_task_id||approved.has(task.depends_on_task_id);
