@@ -4,6 +4,7 @@ import {revalidatePath} from "next/cache";
 import {createClient} from "@/lib/supabase/server";
 import {generateText,aiReady} from "@/lib/ai";
 import {auditWebsite} from "@/lib/seo";
+import {isStudioOwner} from "@/lib/access";
 import type {Result} from "@/app/actions";
 
 const success=(message:string):Result=>({ok:true,message});
@@ -13,6 +14,7 @@ async function session(){
  const db=await createClient();
  const {data:{user},error}=await db.auth.getUser();
  if(error||!user)throw new Error("Phiên đăng nhập không hợp lệ.");
+ if(!isStudioOwner(user.id))throw new Error("Tài khoản này không có quyền quản trị.");
  return {db,user};
 }
 function message(e:unknown){return e instanceof Error?e.message:"Lỗi không xác định. Vui lòng thử lại."}

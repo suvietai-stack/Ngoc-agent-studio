@@ -2,11 +2,12 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import {isStudioOwner} from "@/lib/access";
 export type Result={ok:boolean;message:string};
 const fail=(message:string):Result=>({ok:false,message});
 const ok=(message:string):Result=>({ok:true,message});
-async function auth(){const db=await createClient();const {data:{user},error}=await db.auth.getUser();if(error||!user)throw Error("Chưa đăng nhập");return {db,user}}
-function err(error:unknown){if(error instanceof Error&&error.message==="Chưa đăng nhập")return "Cần đăng nhập lại.";return "Không thể lưu. Kiểm tra dữ liệu, quyền hoặc cấu hình database."}
+async function auth(){const db=await createClient();const {data:{user},error}=await db.auth.getUser();if(error||!user)throw Error("Chưa đăng nhập");if(!isStudioOwner(user.id))throw Error("Không có quyền quản trị");return {db,user}}
+function err(error:unknown){if(error instanceof Error&&error.message==="Chưa đăng nhập")return "Cần đăng nhập lại.";if(error instanceof Error&&error.message==="Không có quyền quản trị")return "Tài khoản này không có quyền quản trị.";return "Không thể lưu. Kiểm tra dữ liệu, quyền hoặc cấu hình database."}
 export async function createProjectAction(form:FormData):Promise<Result>{
  const p=z.object({name:z.string().trim().min(2).max(120),category:z.string().max(80),website_url:z.union([z.url().max(500),z.literal("")]),description:z.string().max(1500)}).safeParse({name:form.get("name"),category:form.get("category")||"SEO & Content",website_url:form.get("website_url")||"",description:form.get("description")||""});
  if(!p.success)return fail("Tên hoặc URL dự án chưa hợp lệ.");

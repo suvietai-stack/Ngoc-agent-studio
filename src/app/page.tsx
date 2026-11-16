@@ -1,5 +1,7 @@
 import {createClient,hasDatabaseConfig} from "@/lib/supabase/server";
 import {aiReady} from "@/lib/ai";
+import {isStudioOwner} from "@/lib/access";
+import {AccessDenied} from "@/components/access-denied";
 import {Workspace} from "@/components/workspace";
 import {Login} from "@/components/login";
 import {Setup} from "@/components/setup";
@@ -11,6 +13,7 @@ export default async function Home(){
  const db=await createClient();
  const {data:{user}}=await db.auth.getUser();
  if(!user)return <Login/>;
+ if(!isStudioOwner(user.id))return <AccessDenied/>;
  const sources=["projects","agents","tasks","knowledge_items","integrations","task_runs","automation_schedules","content_assets","dom_messages"] as const;
  const results=await Promise.all(sources.map(name=>db.from(name).select("*").order("created_at",{ascending:false}).limit(200)));
  const error=results.find(r=>r.error);
