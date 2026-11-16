@@ -27,3 +27,31 @@ When a separate database is configured: sign-in, add/list projects, create/enabl
 - Keep data separated per project and signed-in owner, record approvals, no silent external actions.
 - AI providers need backend-only secrets. Frontend publishable Supabase keys are the only public values.
 
+
+
+## Agent Studio v2 — Đốm AI & tự động hóa (2026-11-17)
+
+- Đăng nhập Supabase Auth (không mở đăng ký công khai), phân quyền Row Level Security theo owner.
+- Starter workspace: Sứ Việt - SEO & Social, 6 Agent, 3 lịch mẫu và các công việc mẫu.
+- Supabase Cron (`ngoc-agent-studio-queue`) chạy mỗi giờ, tự thêm việc **draft** theo lịch daily/weekly. Cron không tự xuất bản.
+- Tạo chiến dịch 4 công việc SEO/Content/Social/Marketing bằng một nút bấm.
+- Chạy Agent với OpenAI Responses API, ghi task_runs, lưu nội dung draft trong content_assets, phê duyệt thủ công. Không dùng Service Role trong trình duyệt.
+- Đốm AI trả lời trong tab riêng, có ngữ cảnh từ projects, tasks và knowledge_items; lịch sử lưu tại dom_messages.
+- SEO Audit quét trực tiếp HTML website HTTPS được khai báo, kiểm tra title/description/H1/canonical/robots/OG. Không thay thế Search Console hay Analytics.
+- **Tự đăng WordPress/Facebook/Instagram, OAuth Analytics/Search Console, truy xuất dữ liệu Ads, AI tự chạy không cần người khởi phát: CHƯA triển khai**. Cần kết nối quyền chính thức, quyền ghi và triển khai bộ điều phối nền an toàn.
+
+### Bật tính năng AI
+
+Trong Vercel Project → Settings → Environment Variables, thêm **server-side secret**:
+```
+OPENAI_API_KEY=<set in Vercel dashboard; do not commit>
+```
+Áp dụng cho production và redeploy. Không đặt key với tiền tố `NEXT_PUBLIC_`.
+Model mặc định `gpt-4.1-mini`. Các nút `Chạy AI` và chat Đốm chỉ hoạt động khi biến này có giá trị. OpenAI API có thể phát sinh phí; hệ thống không tự gọi API khi chưa cấu hình key.
+
+### Migrations
+
+- `supabase/migrations/202611170001_initial.sql`
+- `supabase/migrations/202611170002_automation.sql`
+
+Chỉ chạy migrations ở Supabase project `ngoc-agent-studio-db`. Tuyệt đối không chạy trên Base Sứ Việt. Cron hoạt động trong Postgres, không cần Vercel Cron/Service Role để thêm việc.

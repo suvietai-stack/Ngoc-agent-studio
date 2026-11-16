@@ -1,7 +1,26 @@
 import {createClient,hasDatabaseConfig} from "@/lib/supabase/server";
+import {aiReady} from "@/lib/ai";
 import {Workspace} from "@/components/workspace";
 import {Login} from "@/components/login";
 import {Setup} from "@/components/setup";
 import type {WorkspaceData} from "@/lib/types";
+
 export const dynamic="force-dynamic";
-export default async function Home(){if(!hasDatabaseConfig())return <Setup/>;const db=await createClient();const {data:{user}}=await db.auth.getUser();if(!user)return <Login/>;const queries=await Promise.all([db.from("projects").select("*").order("created_at",{ascending:false}),db.from("agents").select("*").order("created_at",{ascending:false}),db.from("tasks").select("*").order("created_at",{ascending:false}),db.from("knowledge_items").select("*").order("created_at",{ascending:false}),db.from("integrations").select("*").order("created_at",{ascending:false}),db.from("task_runs").select("*").order("created_at",{ascending:false})]);const bad=queries.find(q=>q.error);if(bad?.error)return <Setup migrationError="Database chưa khởi tạo các bảng. Hãy chạy migration trong Supabase."/>;const initial:WorkspaceData={projects:queries[0].data||[],agents:queries[1].data||[],tasks:queries[2].data||[],knowledge:queries[3].data||[],integrations:queries[4].data||[],runs:queries[5].data||[]};return <Workspace initial={initial} email={user.email||"Cá nhân"}/>}
+export default async function Home(){
+ if(!hasDatabaseConfig())return <Setup/>;
+ const db=await createClient();
+ const {data:{user}}=await db.auth.getUser();
+ if(!user)return <Login/>;
+ const sources=["projects","agents","tasks","knowledge_items","integrations","task_runs","automation_schedules","content_assets","dom_messages"] as const;
+ const results=await Promise.all(sources.map(name=>db.from(name).select("*").order("created_at",{ascending:false}).limit(200)));
+ const error=results.find(r=>r.error);
+ if(error?.error)return <Setup migrationError="Database thiếu bảng hoặc không có quyền đọc. Kiểm tra migration và RLS."/>;
+ const data=Object.fromEntries(sources.map((name,i)=>[name,results[i].data||[]])) as Record<typeof sources[number],WorkspaceData["projects"]>;
+ const initial:WorkspaceData={
+  projects:data.projects,agents:data.agents,tasks:data.tasks,
+  knowledge:data.knowledge_items,integrations:data.integrations,runs:data.task_runs,
+  automations:data.automation_schedules,content:data.content_assets,
+  messages:[...data.dom_messages].reverse()
+ };
+ return <Workspace initial={initial} email={user.email||"Cá nhân"} aiConfigured={aiReady()}/>;
+}
