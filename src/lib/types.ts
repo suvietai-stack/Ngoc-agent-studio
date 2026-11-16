@@ -6,7 +6,7 @@ export type Row={
  created_at?:string;updated_at?:string;connection_status?:string;state?:string;
  capabilities?:string[];source?:string;summary?:string;output?:string;error_message?:string;
  frequency?:string;next_run_at?:string;last_run_at?:string;last_sign_in_at?:string;
- role?:string;
+ role?:string;workflow_id?:string|null;workflow_step?:number|null;depends_on_task_id?:string|null;
 };
 export type WorkspaceData={
  projects:Row[];agents:Row[];tasks:Row[];knowledge:Row[];integrations:Row[];runs:Row[];
