@@ -139,6 +139,21 @@ export async function approveContentAction(id:string):Promise<Result>{
  try{const {db,user}=await session();const {data,error}=await db.from("content_assets").update({status:"approved",updated_at:new Date().toISOString()}).eq("id",id).eq("owner_id",user.id).eq("status","draft").select("id").maybeSingle();if(error||!data)return failure("Bản nháp đã được duyệt hoặc không tồn tại.");revalidatePath("/");return success("Đã duyệt nội dung. Chưa xuất bản ra mạng xã hội/website.");}catch(e){return failure(message(e))}
 }
 
+export async function updateProjectWebsiteAction(projectId:string,raw:string):Promise<Result>{
+ if(!uuid.safeParse(projectId).success)return failure("Dự án không hợp lệ.");
+ const trimmed=raw.trim();
+ try{
+  const u=new URL(trimmed);
+  if(u.protocol!=="https:"||u.username||u.password||u.port||!u.hostname.includes(".")||trimmed.length>500)
+   return failure("Chỉ chấp nhận URL website HTTPS công khai, không có port.");
+  const {db,user}=await session();
+  const {data,error}=await db.from("projects").update({website_url:u.toString(),updated_at:new Date().toISOString()}).eq("id",projectId).eq("owner_id",user.id).select("id").maybeSingle();
+  if(error||!data)return failure("Không lưu được URL website.");
+  revalidatePath("/");
+  return success("Đã cập nhật website. Bây giờ có thể chạy SEO Audit thực tế.");
+ }catch(e){return failure(message(e))}
+}
+
 export async function seoAuditAction(projectId:string):Promise<Result>{
  if(!uuid.safeParse(projectId).success)return failure("Chọn dự án cần audit.");
  try{

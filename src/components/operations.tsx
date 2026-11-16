@@ -3,7 +3,7 @@ import {useState,useTransition} from "react";
 import {useRouter} from "next/navigation";
 import {Bot,CalendarClock,CheckCircle2,Clock3,FileText,Globe2,Play,Plus,Send,Sparkles,ToggleLeft,ToggleRight,WandSparkles} from "lucide-react";
 import type {WorkspaceData} from "@/lib/types";
-import {askDomAction,createCampaignAction,createScheduleAction,toggleScheduleAction,runScheduleNowAction,approveContentAction,seoAuditAction} from "@/app/operations";
+import {askDomAction,createCampaignAction,createScheduleAction,toggleScheduleAction,runScheduleNowAction,approveContentAction,seoAuditAction,updateProjectWebsiteAction} from "@/app/operations";
 import type {Result} from "@/app/actions";
 
 type Tab="dom"|"automations"|"content";
@@ -34,6 +34,10 @@ export function StudioOperations({tab,initial,filter,aiReady}:{tab:Tab;initial:W
   <div className="ops-inline"><select aria-label="Chọn dự án" value={selectedProject} onChange={e=>setSelected(e.target.value)}>{projects.length===0?<option value="">Chưa có dự án</option>:projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
    <button className="primary" disabled={pending||!selectedProject} onClick={()=>call(()=>createCampaignAction(selectedProject))}><WandSparkles size={16}/> Tạo chiến dịch</button>
    <button className="ops-outline" disabled={pending||!selectedProject} onClick={()=>call(()=>seoAuditAction(selectedProject))}><Globe2 size={16}/> Audit SEO website</button></div>
+  <form className="ops-url-form" onSubmit={e=>{e.preventDefault();const form=new FormData(e.currentTarget);call(()=>updateProjectWebsiteAction(selectedProject,String(form.get("website_url")||"")))}}>
+   <label>Website HTTPS để kiểm tra SEO<input key={selectedProject} type="url" name="website_url" defaultValue={projects.find(p=>p.id===selectedProject)?.website_url||""} placeholder="https://website-cua-ban.vn" required maxLength={500}/></label>
+   <button type="submit" className="ops-outline" disabled={pending||!selectedProject}>Lưu website</button>
+  </form>
   <small>Audit chỉ quét HTML thật từ website HTTPS đã khai báo trong dự án. Không tự nhận có số liệu Google Search Console.</small></div>
   {showForm&&<section className="panel"><h3>Thiết lập lịch mới</h3><form className="form-stack" onSubmit={scheduleSubmit}>
     <label>Dự án<select name="project_id" value={selectedProject} onChange={e=>setSelected(e.target.value)} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
