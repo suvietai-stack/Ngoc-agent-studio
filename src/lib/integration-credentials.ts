@@ -47,7 +47,7 @@ export async function getOpenAIKey(db:SupabaseClient,ownerId:string,projectId:st
   const stored=await getStoredCredentials(db,ownerId,projectId,"openai");
   if(stored?.apiKey)return stored.apiKey;
  }
- return process.env.OPENAI_API_KEY||undefined;
+ return undefined;
 }
 export async function verifyConnection(provider:Provider,credentials:Record<string,string>,website?:string|null):Promise<boolean>{
  if(provider==="openai"){

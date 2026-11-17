@@ -33,7 +33,7 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
  const grouped=new Map<string,Row[]>();
  for(const task of initial.tasks){
   if(task.source!=="workflow"||!task.workflow_id)continue;
-  if(filter!=="all"&&task.project_id!==filter)continue;
+  if(task.project_id!==selectedProject)continue;
   grouped.set(task.workflow_id,[...(grouped.get(task.workflow_id)||[]),task]);
  }
  const workflows=[...grouped.entries()].map(([id,steps])=>({
@@ -70,7 +70,7 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
     <Plus size={15}/>{pending?"Đang tạo...":"Tạo workflow"}
    </button>
   </form>
-  <small>Cần bật đúng 3 Agent SEO, Content và Social (thuộc dự án hoặc dùng chung). Tạo workflow chỉ xếp việc; không gọi API AI.</small>
+  <small>Cần bật đúng 3 Agent SEO, Content và Social thuộc riêng dự án này. Tạo workflow chỉ xếp việc; không gọi API AI.</small>
   <div className="workflow-list">
    {workflows.length===0?<p className="muted">Chưa có workflow nào. Nhập chủ đề và tạo chuỗi công việc đầu tiên.</p>:workflows.map(w=>{
     const first=w.steps[0];

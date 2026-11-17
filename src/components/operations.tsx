@@ -9,26 +9,27 @@ import {WorkflowBoard} from "@/components/workflows";
 
 type Tab="dom"|"automations"|"content";
 export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{tab:Tab;initial:WorkspaceData;filter:string;aiReady:boolean;runnerConfigured:boolean}){
- const router=useRouter(),[pending,start]=useTransition(),[notice,setNotice]=useState(""),[question,setQuestion]=useState(""),[answer,setAnswer]=useState(""),[selected,setSelected]=useState(""),[showForm,setShowForm]=useState(false),[editing,setEditing]=useState<string|null>(null),[editBody,setEditBody]=useState("");
+ const router=useRouter(),[pending,start]=useTransition(),[notice,setNotice]=useState(""),[question,setQuestion]=useState(""),[answer,setAnswer]=useState(""),[answerProject,setAnswerProject]=useState(""),[selected,setSelected]=useState(""),[showForm,setShowForm]=useState(false),[editing,setEditing]=useState<string|null>(null),[editBody,setEditBody]=useState("");
  const projects=initial.projects;
- const selectedProject=selected||(filter!=="all"?filter:projects[0]?.id)||"";
+ const selectedProject=filter!=="all"?filter:(selected&&projects.some(p=>p.id===selected)?selected:projects[0]?.id||"");
+ const projectAiReady=initial.integrations.some(c=>c.project_id===selectedProject&&c.provider==="openai"&&c.connection_status==="connected");
  const projectMap=new Map(projects.map(p=>[p.id,p.name]));
- const schedules=initial.automations.filter(s=>filter==="all"||s.project_id===filter);
- const assets=initial.content.filter(a=>filter==="all"||a.project_id===filter);
- const chatMessages=initial.messages.filter(m=>!selectedProject||m.project_id===selectedProject);
+ const schedules=initial.automations.filter(s=>s.project_id===selectedProject);
+ const assets=initial.content.filter(a=>a.project_id===selectedProject);
+ const chatMessages=initial.messages.filter(m=>m.project_id===selectedProject);
  function call(fn:()=>Promise<Result>){start(async()=>{try{const r=await fn();setNotice(r.message);router.refresh()}catch{setNotice("Không thể thực hiện. Kiểm tra kết nối.")}})}
  function scheduleSubmit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const data=new FormData(e.currentTarget);call(async()=>{const r=await createScheduleAction(data);if(r.ok)setShowForm(false);return r})}
- function ask(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!question.trim())return;const content=question;start(async()=>{setNotice("");const r=await askDomAction(content,selectedProject||undefined);if(r.ok){setAnswer(r.answer||"");setQuestion("");router.refresh()}else setNotice(r.message)})}
+ function ask(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!question.trim())return;const content=question;start(async()=>{setNotice("");const r=await askDomAction(content,selectedProject||undefined);if(r.ok){setAnswer(r.answer||"");setAnswerProject(selectedProject);setQuestion("");router.refresh()}else setNotice(r.message)})}
  return <div className="ops">
  {notice&&<div className="alert" role="status">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
  {tab==="dom"&&<>
   <section className="ops-hero"><div className="ops-icon"><Sparkles size={26}/></div><div><p className="eyebrow">ĐỐM AI · TRỢ LÝ ĐIỀU PHỐI</p><h2>Hỏi Đốm bất cứ điều gì về chiến dịch.</h2><p>Đốm sử dụng dự án, nhiệm vụ và kho tri thức của bạn để tư vấn. Không tự đăng hoặc thay đổi tài khoản bên ngoài.</p></div></section>
-  {!aiReady&&<div className="ops-warning"><b>Chưa bật bộ não AI</b><p>Thêm API key trong tab Kết nối của dự án hoặc cấu hình <code>OPENAI_API_KEY</code> trên máy chủ. Lịch tự động vẫn tạo hàng đợi công việc bình thường.</p></div>}
+  {!projectAiReady&&<div className="ops-warning"><b>Chưa bật bộ não AI</b><p>Thêm và xác minh OpenAI API key riêng của dự án trong tab Kết nối. Lịch tự động vẫn tạo hàng đợi công việc bình thường.</p></div>}
   <section className="panel ops-chat"><div className="ops-toolbar"><h3>Hội thoại với Đốm</h3><select aria-label="Chọn dự án hội thoại" value={selectedProject} onChange={e=>{setSelected(e.target.value);setAnswer("")}}>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div><div className="ops-messages">
-   {chatMessages.length===0&&!answer&&<div className="ops-placeholder"><Bot size={30}/><b>Đốm đang sẵn sàng nhận hướng dẫn</b><span>Gợi ý: “Lập kế hoạch SEO và social 7 ngày cho Sứ Việt.”</span></div>}
+   {chatMessages.length===0&&(!answer||answerProject!==selectedProject)&&<div className="ops-placeholder"><Bot size={30}/><b>Đốm đang sẵn sàng nhận hướng dẫn</b><span>Gợi ý: “Lập kế hoạch SEO và social 7 ngày cho Sứ Việt.”</span></div>}
    {chatMessages.slice(-12).map(m=><div key={m.id} className={"ops-bubble "+(m.role==="user"?"self":"assistant")}><small>{m.role==="user"?"Bạn":"Đốm AI"}</small><p>{m.content}</p></div>)}
-   {answer&&chatMessages.length===0&&<div className="ops-bubble assistant"><small>Đốm AI</small><p>{answer}</p></div>}
-  </div><form className="ops-composer" onSubmit={ask}><textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3} maxLength={4000} required placeholder="Hỏi Đốm về SEO, kế hoạch marketing, công việc..." disabled={!aiReady||pending}/><button type="submit" className="primary" disabled={!aiReady||pending||question.trim().length<3}><Send size={16}/>{pending?"Đang nghĩ...":"Gửi Đốm"}</button></form></section>
+   {answer&&answerProject===selectedProject&&chatMessages.length===0&&<div className="ops-bubble assistant"><small>Đốm AI</small><p>{answer}</p></div>}
+  </div><form className="ops-composer" onSubmit={ask}><textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3} maxLength={4000} required placeholder="Hỏi Đốm về SEO, kế hoạch marketing, công việc..." disabled={!projectAiReady||pending}/><button type="submit" className="primary" disabled={!aiReady||pending||question.trim().length<3}><Send size={16}/>{pending?"Đang nghĩ...":"Gửi Đốm"}</button></form></section>
  </>}
  {tab==="automations"&&<>
    <section className="panel"><div className="ops-toolbar"><div><h3>AI tự tạo bản nháp theo lịch</h3>
@@ -40,7 +41,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
       {projects.find(p=>p.id===selectedProject)?.auto_run_enabled?"Tắt tự chạy AI":"Bật tự chạy AI"}</button>
     </div><small>Chế độ cần migration 005, khóa máy chủ riêng và được tắt mặc định cho mỗi dự án.</small>
    </section>
-  <WorkflowBoard initial={initial} filter={filter} selectedProject={selectedProject} onProjectChange={setSelected} aiReady={aiReady}/>
+  <WorkflowBoard initial={initial} filter={filter} selectedProject={selectedProject} onProjectChange={setSelected} aiReady={projectAiReady}/>
   <div className="ops-toolbar"><div><h3>Lịch tự động có thật</h3><p>Supabase Cron mỗi giờ kiểm tra lịch đến hạn, tạo công việc mới trong hàng đợi. Chạy AI và duyệt nội dung là bước riêng để tránh đăng nhầm.</p></div><button className="primary" onClick={()=>setShowForm(v=>!v)}><Plus size={16}/> Tạo lịch</button></div>
   <div className="panel"><h3>Bắt đầu nhanh</h3><p>Tạo 4 nhiệm vụ chuẩn SEO, Content, Social và Marketing cho dự án đang chọn, không cần API key.</p>
   <div className="ops-inline"><select aria-label="Chọn dự án" value={selectedProject} onChange={e=>setSelected(e.target.value)}>{projects.length===0?<option value="">Chưa có dự án</option>:projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
@@ -54,7 +55,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
   {showForm&&<section className="panel"><h3>Thiết lập lịch mới</h3><form className="form-stack" onSubmit={scheduleSubmit}>
     <label>Dự án<select name="project_id" value={selectedProject} onChange={e=>setSelected(e.target.value)} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
     <label>Tên công việc<input name="title" required minLength={4} maxLength={180} placeholder="Ví dụ: Kiểm tra kế hoạch social mỗi ngày"/></label>
-    <label>Agent phụ trách<select name="agent_id"><option value="">Để trống</option>{initial.agents.filter(a=>!a.project_id||a.project_id===selectedProject).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+    <label>Agent phụ trách<select name="agent_id"><option value="">Để trống</option>{initial.agents.filter(a=>a.project_id===selectedProject&&a.enabled).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
     <label>Yêu cầu<textarea name="brief" maxLength={5000} rows={3} placeholder="Mô tả nội dung cần sinh theo lịch"/></label>
     <label>Tần suất<select name="frequency"><option value="daily">Hằng ngày</option><option value="weekly">Hằng tuần</option></select></label>
     <div className="ops-inline"><button className="primary" disabled={pending||!selectedProject} type="submit">Lưu và bật lịch</button><button className="ops-outline" type="button" onClick={()=>setShowForm(false)}>Hủy</button></div>

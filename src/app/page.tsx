@@ -26,5 +26,5 @@ export default async function Home(){
   automations:data.automation_schedules,content:data.content_assets,
   messages:[...data.dom_messages].reverse()
  };
- return <Workspace initial={initial} email={user.email||"Cá nhân"} aiConfigured={aiReady()||data.integrations.some(i=>i.provider==="openai"&&i.connection_status==="connected")} encryptionConfigured={encryptionReady()} envOpenAI={aiReady()} runnerConfigured={Boolean(process.env.CRON_SECRET&&process.env.SUPABASE_SERVICE_ROLE_KEY&&process.env.AUTO_AGENT_RUNNER_ENABLED==="true")}/>;
+ return <Workspace initial={initial} email={user.email||"Cá nhân"} aiConfigured={data.integrations.some(i=>i.provider==="openai"&&i.connection_status==="connected")} encryptionConfigured={encryptionReady()} envOpenAI={aiReady()} runnerConfigured={Boolean(process.env.CRON_SECRET&&process.env.SUPABASE_SERVICE_ROLE_KEY&&process.env.AUTO_AGENT_RUNNER_ENABLED==="true")}/>;
 }

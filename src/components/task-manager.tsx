@@ -6,7 +6,7 @@ import type {WorkspaceData} from "@/lib/types";
 import {updateTaskAction} from "@/app/actions";
 import {runTaskAction} from "@/app/operations";
 
-export function TaskManager({initial,filter,aiConfigured,onAdd,onOpenContent}:{initial:WorkspaceData;filter:string;aiConfigured:boolean;onAdd:()=>void;onOpenContent:()=>void}){
+export function TaskManager({initial,filter,connectedProjects,onAdd,onOpenContent}:{initial:WorkspaceData;filter:string;connectedProjects:Set<string>;onAdd:()=>void;onOpenContent:()=>void}){
  const router=useRouter(),[pending,start]=useTransition(),[editing,setEditing]=useState<string|null>(null),[notice,setNotice]=useState("");
  const rows=initial.tasks.filter(t=>filter==="all"||t.project_id===filter);
  const projects=new Map(initial.projects.map(p=>[p.id,p.name]));
@@ -38,7 +38,7 @@ export function TaskManager({initial,filter,aiConfigured,onAdd,onOpenContent}:{i
      {t.status==="pending_approval"?"Cần duyệt nội dung":t.status==="approved"?"Nội dung đã duyệt":t.status==="running"?"AI đang chạy":t.status==="failed"?"Lỗi":t.status==="done"?"Hoàn tất":"Bản nháp"}</span>
     <div className="ops-rowbuttons">
      {editable&&<button disabled={pending} onClick={()=>setEditing(editing===t.id?null:t.id)}><Pencil size={14}/> Sửa</button>}
-     {["draft","failed"].includes(t.status||"")&&<button disabled={pending||!aiConfigured} onClick={()=>execute(()=>runTaskAction(t.id))}><Play size={14}/> Chạy AI</button>}
+     {["draft","failed"].includes(t.status||"")&&<button disabled={pending||!connectedProjects.has(t.project_id||"")} title={!connectedProjects.has(t.project_id||"")?"Cần xác minh API OpenAI riêng cho dự án này":""} onClick={()=>execute(()=>runTaskAction(t.id))}><Play size={14}/> Chạy AI</button>}
      {t.status==="pending_approval"&&<button onClick={onOpenContent}><FileText size={14}/> Mở Nội dung</button>}
     </div>
    </div>;

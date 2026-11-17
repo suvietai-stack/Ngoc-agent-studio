@@ -26,7 +26,7 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI}:P
  return <section className="panel"><div className="panel-head"><h3>Trung tâm kết nối API</h3><span className="chip"><ShieldCheck size={13}/> Khóa mã hóa ở máy chủ</span></div>
   <p className="muted">Chọn dự án, thêm thông tin API rồi kiểm tra. Không hiển thị lại mật khẩu hoặc API key sau khi lưu. Chưa có tự xuất bản.</p>
   {message&&<div className="alert" role="status">{message}<button onClick={()=>setMessage("")}>×</button></div>}
-  <div className="ops-inline"><label htmlFor="connection-project">Dự án</label><select id="connection-project" value={selected} onChange={e=>setProject(e.target.value)}>{initial.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+  <div className="ops-inline"><label htmlFor="connection-project">Dự án</label><select id="connection-project" value={selected} onChange={e=>{setProject(e.target.value);setMessage("")}}>{initial.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
   {!encryptionConfigured&&<p className="ops-warning"><b>Chưa bật kho khóa an toàn.</b> Quản trị viên cần đặt INTEGRATION_ENCRYPTION_KEY (Base64 của 32 byte) trên Vercel và áp dụng migration 004. Không nhập khóa thật khi chưa kích hoạt.</p>}
   {!selected&&<p className="muted">Hãy tạo dự án trước khi cấu hình API.</p>}
   <div className="cards integrations">{providers.map(([id,title,description])=>{
@@ -34,7 +34,7 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI}:P
    return <article className="integration" key={id}>
     <div className="card-icon"><PlugZap size={20}/></div><h3>{title}</h3>
     <span className={"chip"+(status==="connected"?" on":"")}>{status==="connected"?"Đã xác minh":status==="error"?"Kiểm tra thất bại":"Chưa xác minh"}</span>
-    {id==="openai"&&envOpenAI&&<small>Máy chủ đã có OpenAI API key dùng chung.</small>}
+    {id==="openai"&&envOpenAI&&<small>API key máy chủ không dùng chung; mỗi dự án phải lưu và xác minh khóa riêng.</small>}
     <p>{description}</p>
     <form className="form-stack" onSubmit={save}>
      <input type="hidden" name="project_id" value={selected}/>
