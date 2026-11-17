@@ -35,7 +35,7 @@ export async function saveConnectionAction(form:FormData):Promise<Result>{
   const {data:project}=await db.from("projects").select("id,website_url").eq("owner_id",user.id).eq("id",p.project_id).maybeSingle();
   if(!project)return fail("Không tìm thấy dự án.");
   if(p.provider==="wordpress"&&!project.website_url)return fail("Hãy khai báo website HTTPS của dự án trước.");
-  const credentials=p.provider==="openai"?{apiKey:p.api_key!}:{username:p.username!,appPassword:p.app_password!};
+  const credentials:Record<string,string>=p.provider==="openai"?{apiKey:p.api_key!}:{username:p.username!,appPassword:p.app_password!};
   const encrypted=encryptCredentials(credentials);
   const {error}=await db.from("integration_secrets").upsert({
    owner_id:user.id,project_id:p.project_id,provider:p.provider,encrypted_credentials:encrypted,
