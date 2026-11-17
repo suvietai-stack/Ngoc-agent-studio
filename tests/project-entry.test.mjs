@@ -15,6 +15,8 @@ test("Workspace links always preserve the project and permitted destination tab"
  assert.equal(projectWorkspaceHref(a,"tasks"),"/?project="+a+"&tab=tasks");
  assert.equal(projectWorkspaceHref(a,"bad"),"/?project="+a);
  assert.equal(allowedWorkspaceTab("agents"),"agents");
+ assert.equal(allowedWorkspaceTab("wordpress"),"wordpress");
+ assert.equal(projectWorkspaceHref(a,"wordpress"),"/?project="+a+"&tab=wordpress");
  assert.equal(allowedWorkspaceTab("garbage"),null);
  assert.throws(()=>projectWorkspaceHref("all","home"));
 });
