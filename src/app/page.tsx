@@ -14,7 +14,7 @@ export default async function Home(){
  const {data:{user}}=await db.auth.getUser();
  if(!user)return <Login/>;
  if(!isStudioOwner(user.id))return <AccessDenied/>;
- const sources=["projects","agents","tasks","knowledge_items","integrations","task_runs","automation_schedules","content_assets","dom_messages"] as const;
+ const sources=["projects","agents","tasks","knowledge_items","integrations","task_runs","automation_schedules","content_assets","dom_messages","ai_usage_events"] as const;
  const results=await Promise.all(sources.map(name=>db.from(name).select("*").order("created_at",{ascending:false}).limit(200)));
  const error=results.find(r=>r.error);
  if(error?.error)return <Setup migrationError="Database thiếu bảng hoặc không có quyền đọc. Kiểm tra migration và RLS."/>;
@@ -23,7 +23,7 @@ export default async function Home(){
   projects:data.projects,agents:data.agents,tasks:data.tasks,
   knowledge:data.knowledge_items,integrations:data.integrations,runs:data.task_runs,
   automations:data.automation_schedules,content:data.content_assets,
-  messages:[...data.dom_messages].reverse()
+  messages:[...data.dom_messages].reverse(),usage:data.ai_usage_events
  };
  return <Workspace initial={initial} email={user.email||"Cá nhân"} aiConfigured={aiReady()}/>;
 }
