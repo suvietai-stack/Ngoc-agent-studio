@@ -142,7 +142,15 @@ export async function createCampaignAction(projectId:string):Promise<Result>{
 export async function createScheduleAction(form:FormData):Promise<Result>{
  const p=z.object({project_id:uuid,agent_id:z.union([uuid,z.literal("")]),title:z.string().trim().min(4).max(180),brief:z.string().trim().max(5000),frequency:z.enum(["daily","weekly"])}).safeParse({project_id:form.get("project_id"),agent_id:form.get("agent_id")||"",title:form.get("title"),brief:form.get("brief")||"",frequency:form.get("frequency")});
  if(!p.success)return failure("Nhập đủ dự án, tiêu đề và lịch chạy.");
- try{const {db,user}=await session();const {error}=await db.from("automation_schedules").insert({...p.data,agent_id:p.data.agent_id||null,owner_id:user.id,enabled:true,next_run_at:new Date().toISOString()});if(error)return failure("Không tạo được lịch (có thể trùng tên trong dự án).");revalidatePath("/");return success("Đã bật lịch. Supabase Cron sẽ đưa công việc vào hàng đợi ở chu kỳ tiếp theo.");}catch(e){return failure(message(e))}
+ try{const {db,user}=await session();
+  if(p.data.agent_id){
+   const {data:agent}=await db.from("agents").select("project_id,enabled").eq("id",p.data.agent_id).eq("owner_id",user.id).maybeSingle();
+   if(!agent||(agent.project_id&&agent.project_id!==p.data.project_id))return failure("Agent của lịch không thuộc dự án này.");
+   if(!agent.enabled)return failure("Agent của lịch phải được bật.");
+  }
+  const {error}=await db.from("automation_schedules").insert({...p.data,agent_id:p.data.agent_id||null,owner_id:user.id,enabled:true,next_run_at:new Date().toISOString()});
+  if(error)return failure("Không tạo được lịch (có thể trùng tên trong dự án).");
+  revalidatePath("/");return success("Đã bật lịch. Supabase Cron sẽ đưa công việc vào hàng đợi ở chu kỳ tiếp theo.");}catch(e){return failure(message(e))}
 }
 
 export async function toggleScheduleAction(id:string,enabled:boolean):Promise<Result>{
