@@ -36,7 +36,7 @@ function readTarget(collection:string,raw:Record<string,unknown>):WpTarget{
 export async function wpFindTarget(site:string,auth:Auth,rawUrl:string,field:WordpressField,mediaId?:number):Promise<WpTarget>{
  if(!auth.username||!auth.appPassword)throw new Error("Chưa có tài khoản WordPress đã mã hóa.");
  if(field==="image_alt"){
-  if(!Number.isSafeInteger(mediaId)||!mediaId||mediaId<1)throw new Error("ALT ảnh cần ID Media trong thư viện WordPress.");
+  if(typeof mediaId!=="number"||!Number.isSafeInteger(mediaId)||mediaId<1)throw new Error("ALT ảnh cần ID Media trong thư viện WordPress.");
   const raw=await wpJson(site,auth,"/media/"+mediaId+"?context=edit");
   if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Không tìm thấy ảnh trong Media Library.");
   const media=readTarget("media",raw as Record<string,unknown>);
@@ -69,7 +69,7 @@ export async function wpFindTarget(site:string,auth:Auth,rawUrl:string,field:Wor
  throw new Error("Chưa tìm được bài/trang có REST API chỉnh sửa tương ứng URL. Trang WooCommerce hoặc trình dựng có thể cần adapter riêng.");
 }
 export async function wpReadById(site:string,auth:Auth,collection:string,id:number):Promise<WpTarget>{
- if(![...WP_COLLECTIONS,"media"].includes(collection)||!Number.isSafeInteger(id)||id<=0)
+ if(!(["posts","pages","product","products","media"] as readonly string[]).includes(collection)||!Number.isSafeInteger(id)||id<=0)
   throw new Error("Loại tài nguyên/ID WordPress không hợp lệ.");
  const raw=await wpJson(site,auth,"/"+collection+"/"+id+"?context=edit");
  if(!raw||typeof raw!=="object"||Array.isArray(raw))throw new Error("Tài nguyên WordPress đã bị xóa hoặc đổi quyền.");
@@ -95,7 +95,7 @@ export function wpUpdateBody(field:WordpressField,original:string,proposed:strin
  throw new Error("Không thể cập nhật trường WordPress này.");
 }
 export async function wpWrite(site:string,auth:Auth,collection:string,id:number,body:Record<string,unknown>):Promise<void>{
- if(![...WP_COLLECTIONS,"media"].includes(collection)||!Number.isSafeInteger(id)||id<=0)
+ if(!(["posts","pages","product","products","media"] as readonly string[]).includes(collection)||!Number.isSafeInteger(id)||id<=0)
   throw new Error("Không được gửi bản sửa đến tài nguyên ngoài danh sách.");
  const response=await wpJson(site,auth,"/"+collection+"/"+id,"POST",body);
  if(!response||typeof response!=="object"||Array.isArray(response))throw new Error("WordPress chưa xác nhận cập nhật.");
