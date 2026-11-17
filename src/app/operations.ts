@@ -148,29 +148,67 @@ export async function createCampaignAction(projectId:string):Promise<Result>{
  }catch(e){return failure(message(e))}
 }
 
+async function scheduledAgent(db:Awaited<ReturnType<typeof createClient>>,ownerId:string,agentId:string,projectId:string){
+ const {data:agent,error}=await db.from("agents").select("id,project_id,enabled,operation_mode")
+  .eq("id",agentId).eq("owner_id",ownerId).maybeSingle();
+ return !error&&agent?.enabled===true&&agent.operation_mode==="scheduled"
+  &&(!agent.project_id||agent.project_id===projectId);
+}
+
 export async function createScheduleAction(form:FormData):Promise<Result>{
- const p=z.object({project_id:uuid,agent_id:z.union([uuid,z.literal("")]),title:z.string().trim().min(4).max(180),brief:z.string().trim().max(5000),frequency:z.enum(["daily","weekly"])}).safeParse({project_id:form.get("project_id"),agent_id:form.get("agent_id")||"",title:form.get("title"),brief:form.get("brief")||"",frequency:form.get("frequency")});
- if(!p.success)return failure("Nhập đủ dự án, tiêu đề và lịch chạy.");
- try{const {db,user}=await session();const {error}=await db.from("automation_schedules").insert({...p.data,agent_id:p.data.agent_id||null,owner_id:user.id,enabled:true,next_run_at:new Date().toISOString()});if(error)return failure("Không tạo được lịch (có thể trùng tên trong dự án).");revalidatePath("/");return success("Đã bật lịch. Supabase Cron sẽ đưa công việc vào hàng đợi ở chu kỳ tiếp theo.");}catch(e){return failure(message(e))}
+ const p=z.object({
+  project_id:uuid,agent_id:uuid,title:z.string().trim().min(4).max(180),
+  brief:z.string().trim().max(5000),frequency:z.enum(["daily","weekly"])
+ }).safeParse({project_id:form.get("project_id"),agent_id:form.get("agent_id"),
+  title:form.get("title"),brief:form.get("brief")||"",frequency:form.get("frequency")});
+ if(!p.success)return failure("Cần chọn dự án, Agent Theo lịch, tiêu đề và tần suất.");
+ try{
+  const {db,user}=await session();
+  if(!await scheduledAgent(db,user.id,p.data.agent_id,p.data.project_id))
+   return failure("Agent phải đang bật, thuộc đúng dự án và có chế độ Theo lịch.");
+  const {error}=await db.from("automation_schedules").insert({
+   ...p.data,owner_id:user.id,enabled:true,next_run_at:new Date().toISOString()
+  });
+  if(error)return failure("Không tạo được lịch (có thể đã tồn tại lịch cùng tên).");
+  revalidatePath("/");
+  return success("Đã tạo lịch. Cron đưa công việc nháp vào hàng đợi; AI không tự chạy.");
+ }catch(e){return failure(message(e))}
 }
 
 export async function toggleScheduleAction(id:string,enabled:boolean):Promise<Result>{
  if(!uuid.safeParse(id).success)return failure("ID lịch không hợp lệ.");
- try{const {db,user}=await session();const {data,error}=await db.from("automation_schedules").update({enabled}).eq("owner_id",user.id).eq("id",id).select("id").maybeSingle();if(error||!data)return failure("Không cập nhật được lịch.");revalidatePath("/");return success(enabled?"Đã bật lịch tự động.":"Đã tạm dừng lịch.");}catch(e){return failure(message(e))}
+ try{
+  const {db,user}=await session();
+  const {data:s,error:readError}=await db.from("automation_schedules").select("id,agent_id,project_id")
+   .eq("owner_id",user.id).eq("id",id).maybeSingle();
+  if(readError||!s)return failure("Không tìm thấy lịch.");
+  if(enabled&&(!s.agent_id||!await scheduledAgent(db,user.id,s.agent_id,s.project_id)))
+   return failure("Chỉ bật được lịch khi Agent đang bật và ở chế độ Theo lịch.");
+  const {data,error}=await db.from("automation_schedules").update({enabled})
+   .eq("owner_id",user.id).eq("id",id).select("id").maybeSingle();
+  if(error||!data)return failure("Không cập nhật được lịch.");
+  revalidatePath("/");
+  return success(enabled?"Đã bật lịch tạo việc nháp.":"Đã tạm dừng lịch.");
+ }catch(e){return failure(message(e))}
 }
 
 export async function runScheduleNowAction(id:string):Promise<Result>{
  if(!uuid.safeParse(id).success)return failure("ID lịch không hợp lệ.");
  try{
   const {db,user}=await session();
-  const {data:s}=await db.from("automation_schedules").select("*").eq("owner_id",user.id).eq("id",id).maybeSingle();
-  if(!s)return failure("Không tìm thấy lịch.");
-  const {error}=await db.from("tasks").insert({owner_id:user.id,project_id:s.project_id,agent_id:s.agent_id,title:s.title,brief:s.brief,source:"automation",schedule_id:s.id,status:"draft"});
+  const {data:s,error:readError}=await db.from("automation_schedules").select("*")
+   .eq("owner_id",user.id).eq("id",id).maybeSingle();
+  if(readError||!s)return failure("Không tìm thấy lịch.");
+  if(!s.agent_id||!await scheduledAgent(db,user.id,s.agent_id,s.project_id))
+   return failure("Agent phụ trách cần được bật và đặt ở chế độ Theo lịch.");
+  const {error}=await db.from("tasks").insert({
+   owner_id:user.id,project_id:s.project_id,agent_id:s.agent_id,
+   title:s.title,brief:s.brief,source:"automation",schedule_id:s.id,status:"draft"
+  });
   if(error)return failure("Không thể thêm công việc vào hàng đợi.");
-  const next=new Date(Date.now()+(s.frequency==="daily"?86400000:604800000)).toISOString();
-  await db.from("automation_schedules").update({last_run_at:new Date().toISOString(),next_run_at:next}).eq("id",s.id).eq("owner_id",user.id);
+  // A manual queue operation must not move an automatic schedule's next due time.
   revalidatePath("/");
-  return success("Đã xếp một công việc mới vào hàng đợi, chưa xuất bản.");
+  return success("Đã xếp công việc nháp vào hàng đợi. Chưa gọi AI hay xuất bản.");
  }catch(e){return failure(message(e))}
 }
 
