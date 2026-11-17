@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {isStudioOwner} from "@/lib/access";
 import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
-export type Result={ok:boolean;message:string};
+export type Result={ok:boolean;message:string;projectId?:string};
 const fail=(message:string):Result=>({ok:false,message});
 const ok=(message:string):Result=>({ok:true,message});
 async function auth(){const db=await createClient();const {data:{user},error}=await db.auth.getUser();if(error||!user)throw Error("Chưa đăng nhập");if(!isStudioOwner(user.id))throw Error("Không có quyền quản trị");return {db,user}}
@@ -14,7 +14,7 @@ export async function createProjectAction(form:FormData):Promise<Result>{
  if(!p.success)return fail("Tên hoặc URL dự án chưa hợp lệ.");
  let website:string|null=null;
  if(p.data.website_url){try{website=parsePublicHttpsUrl(p.data.website_url).toString();}catch{return fail("Website dự án phải là địa chỉ HTTPS công khai, không có IP hoặc port tùy chỉnh.");}}
- try{const {db,user}=await auth();const {error}=await db.from("projects").insert({...p.data,owner_id:user.id,website_url:website});if(error)return fail(err(error));revalidatePath("/");return ok("Đã tạo dự án.");}catch(e){return fail(err(e))}
+ try{const {db,user}=await auth();const {data,error}=await db.from("projects").insert({...p.data,owner_id:user.id,website_url:website}).select("id").single();if(error||!data)return fail(err(error));revalidatePath("/");return {ok:true,message:"Đã tạo dự án.",projectId:data.id};}catch(e){return fail(err(e))}
 }
 const cap=["read","research","draft","edit"] as const; // No external publish/send/delete implementation.
 export async function createAgentAction(form:FormData):Promise<Result>{
