@@ -15,9 +15,12 @@ export async function createProjectAction(form:FormData):Promise<Result>{
 }
 const cap=["read","research","draft","edit","publish","external_send","delete"] as const;
 export async function createAgentAction(form:FormData):Promise<Result>{
- const p=z.object({name:z.string().trim().min(2).max(100),purpose:z.string().trim().min(6).max(500),instructions:z.string().trim().min(10).max(20000),model:z.string().trim().min(3).max(100),project_id:z.union([z.uuid(),z.literal("")]),capabilities:z.array(z.enum(cap))}).safeParse({name:form.get("name"),purpose:form.get("purpose"),instructions:form.get("instructions"),model:form.get("model")||"gpt-4.1-mini",project_id:form.get("project_id")||"",capabilities:form.getAll("capabilities").map(String)});
+ const p=z.object({name:z.string().trim().min(2).max(100),purpose:z.string().trim().min(6).max(500),instructions:z.string().trim().min(10).max(20000),model:z.string().trim().min(3).max(100),project_id:z.uuid(),capabilities:z.array(z.enum(cap))}).safeParse({name:form.get("name"),purpose:form.get("purpose"),instructions:form.get("instructions"),model:form.get("model")||"gpt-4.1-mini",project_id:form.get("project_id"),capabilities:form.getAll("capabilities").map(String)});
  if(!p.success)return fail("Thông tin Agent chưa đầy đủ hoặc không hợp lệ.");
- try{const {db,user}=await auth();const {error}=await db.from("agents").insert({...p.data,project_id:p.data.project_id||null,owner_id:user.id,enabled:false,approval_required:true});if(error)return fail(err(error));revalidatePath("/");return ok("Đã tạo Agent. Bật Agent để có thể chạy nhiệm vụ AI.");}catch(e){return fail(err(e))}
+ try{const {db,user}=await auth();
+ const {data:project}=await db.from("projects").select("status").eq("id",p.data.project_id).eq("owner_id",user.id).maybeSingle();
+ if(!project||project.status!=="active")return fail("Chọn dự án đang hoạt động cho Agent.");
+ const {error}=await db.from("agents").insert({...p.data,owner_id:user.id,enabled:false,approval_required:true});if(error)return fail(err(error));revalidatePath("/");return ok("Đã tạo Agent. Bật Agent để có thể chạy nhiệm vụ AI.");}catch(e){return fail(err(e))}
 }
 export async function toggleAgentAction(id:string,enabled:boolean):Promise<Result>{
  if(!z.uuid().safeParse(id).success)return fail("ID Agent không hợp lệ.");
@@ -27,9 +30,11 @@ export async function createTaskAction(form:FormData):Promise<Result>{
  const p=z.object({title:z.string().trim().min(4).max(200),brief:z.string().max(5000),project_id:z.uuid(),agent_id:z.union([z.uuid(),z.literal("")]),approval:z.boolean()}).safeParse({title:form.get("title"),brief:form.get("brief")||"",project_id:form.get("project_id"),agent_id:form.get("agent_id")||"",approval:form.get("approval")==="on"});
  if(!p.success)return fail("Chọn dự án và nhập tên công việc hợp lệ.");
  try{const {db,user}=await auth();
+  const {data:project}=await db.from("projects").select("status").eq("id",p.data.project_id).eq("owner_id",user.id).maybeSingle();
+  if(!project||project.status!=="active")return fail("Chỉ tạo công việc cho dự án đang hoạt động.");
   if(p.data.agent_id){
    const {data:agent}=await db.from("agents").select("project_id").eq("id",p.data.agent_id).eq("owner_id",user.id).maybeSingle();
-   if(!agent||(agent.project_id&&agent.project_id!==p.data.project_id))return fail("Agent đã chọn không thuộc dự án này.");
+   if(!agent||agent.project_id!==p.data.project_id)return fail("Agent đã chọn không thuộc dự án này.");
   }
   const {error}=await db.from("tasks").insert({owner_id:user.id,title:p.data.title,brief:p.data.brief,project_id:p.data.project_id,agent_id:p.data.agent_id||null,status:"draft"});
   if(error)return fail(err(error));revalidatePath("/");return ok("Đã lưu nhiệm vụ vào hàng đợi. Chọn Chạy AI để tạo bản nháp.");}catch(e){return fail(err(e))}
@@ -45,9 +50,12 @@ export async function approveTaskAction(id:string):Promise<Result>{
  }catch(e){return fail(err(e))}
 }
 export async function createKnowledgeAction(form:FormData):Promise<Result>{
- const p=z.object({title:z.string().trim().min(2).max(180),content:z.string().trim().min(20).max(30000),project_id:z.union([z.uuid(),z.literal("")])}).safeParse({title:form.get("title"),content:form.get("content"),project_id:form.get("project_id")||""});
+ const p=z.object({title:z.string().trim().min(2).max(180),content:z.string().trim().min(20).max(30000),project_id:z.uuid()}).safeParse({title:form.get("title"),content:form.get("content"),project_id:form.get("project_id")});
  if(!p.success)return fail("Tri thức cần tiêu đề và nội dung ít nhất 20 ký tự.");
- try{const {db,user}=await auth();const {error}=await db.from("knowledge_items").insert({...p.data,owner_id:user.id,project_id:p.data.project_id||null});if(error)return fail(err(error));revalidatePath("/");return ok("Đã lưu tri thức; Đốm và các Agent sẽ tham khảo khi tạo nội dung.");}catch(e){return fail(err(e))}
+ try{const {db,user}=await auth();
+ const {data:project}=await db.from("projects").select("id").eq("id",p.data.project_id).eq("owner_id",user.id).maybeSingle();
+ if(!project)return fail("Dự án tri thức không hợp lệ.");
+ const {error}=await db.from("knowledge_items").insert({...p.data,owner_id:user.id});if(error)return fail(err(error));revalidatePath("/");return ok("Đã lưu tri thức; Đốm và các Agent sẽ tham khảo khi tạo nội dung.");}catch(e){return fail(err(e))}
 }
 export async function signOutAction(){const db=await createClient();await db.auth.signOut();revalidatePath("/")}
 
@@ -137,7 +145,7 @@ export async function updateTaskAction(id:string,form:FormData):Promise<Result>{
    return fail("Không được sửa nhiệm vụ đang chạy, đã duyệt hoặc thuộc chuỗi Agent.");
   if(p.data.agent_id){
    const {data:agent}=await db.from("agents").select("project_id,enabled").eq("id",p.data.agent_id).eq("owner_id",user.id).maybeSingle();
-   if(!agent||!agent.enabled||(agent.project_id&&agent.project_id!==task.project_id))return fail("Agent không hợp lệ cho dự án này.");
+   if(!agent||!agent.enabled||agent.project_id!==task.project_id)return fail("Agent không hợp lệ cho dự án này.");
   }
   const {data,error}=await db.from("tasks").update({
    title:p.data.title,brief:p.data.brief,agent_id:p.data.agent_id||null,status:"draft",updated_at:new Date().toISOString()

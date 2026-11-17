@@ -64,16 +64,16 @@ export async function executeNextAutoDraft():Promise<Outcome>{
   }
   const {data:agents}=task.agent_id?
    await db.from("agents").select("*").eq("id",task.agent_id).eq("owner_id",owner).eq("enabled",true):
-   await db.from("agents").select("*").eq("owner_id",owner).eq("enabled",true).or("project_id.eq."+task.project_id+",project_id.is.null").limit(100);
-  const agent=(agents||[]).find(a=>a.project_id===task.project_id)||(agents||[]).find(a=>a.project_id===null);
-  if(!agent||agent.project_id&&agent.project_id!==task.project_id)continue;
+   await db.from("agents").select("*").eq("owner_id",owner).eq("enabled",true).eq("project_id",task.project_id).limit(100);
+  const agent=(agents||[]).find(a=>a.project_id===task.project_id);
+  if(!agent||agent.project_id!==task.project_id)continue;
   const key=await getOpenAIKey(db,owner,task.project_id);
   if(!key)continue;
   const {data:locked,error:lockError}=await db.from("tasks").update({status:"running",updated_at:new Date().toISOString()})
    .eq("id",task.id).eq("owner_id",owner).in("status",["draft","failed"]).select("id").maybeSingle();
   if(lockError||!locked)continue;
   const {data:run,error:runError}=await db.from("task_runs").insert({
-   owner_id:owner,task_id:task.id,agent_id:agent.id,state:"running",
+   owner_id:owner,project_id:task.project_id,task_id:task.id,agent_id:agent.id,state:"running",
    started_at:new Date().toISOString(),model:agent.model||"gpt-4.1-mini"
   }).select("id").single();
   if(runError||!run){
@@ -83,7 +83,7 @@ export async function executeNextAutoDraft():Promise<Outcome>{
   try{
    const project=projects.find(p=>p.id===task.project_id);
    const {data:knowledge}=await db.from("knowledge_items").select("title,content").eq("owner_id",owner)
-    .or("project_id.is.null,project_id.eq."+task.project_id).order("created_at",{ascending:false}).limit(8);
+    .eq("project_id",task.project_id).order("created_at",{ascending:false}).limit(8);
    const references=(knowledge||[]).map(k=>String(k.title)+": "+String(k.content).slice(0,1500)).join("\n");
    const instructions="Bạn là "+agent.name+". Vai trò: "+agent.purpose+". Hướng dẫn: "+agent.instructions+
     ". Luôn soạn BẢN NHÁP bằng tiếng Việt, không bịa số liệu, không đăng hoặc gửi nội dung ra ngoài.\nTri thức:\n"+references;
