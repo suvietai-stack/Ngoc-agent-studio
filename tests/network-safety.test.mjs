@@ -16,4 +16,9 @@ test("private, reserved, and documentation IPv4 ranges are denied",()=>{
  assert.equal(isPublicIPv4("8.8.8.8"),true);
  assert.equal(isPublicIPv4("1.1.1.1"),true);
 });
-\ntest("pinned HTTPS requests disable Node.js 22 family autoselection",()=>{\n const source=readFileSync(new URL("../src/lib/public-http.ts",import.meta.url),"utf8");\n assert.match(source,/family:\\s*4,\\s*autoSelectFamily:\\s*false/);\n assert.match(source,/lookup:[^\\n]*callback\\(null,address,4\\)/);\n});\n
+
+test("pinned HTTPS requests disable Node.js 22 family autoselection",()=>{
+ const source=readFileSync(new URL("../src/lib/public-http.ts",import.meta.url),"utf8");
+ assert.match(source,/family:\s*4,\s*autoSelectFamily:\s*false/);
+ assert.match(source,/lookup:[^\n]*callback\(null,address,4\)/);
+});
