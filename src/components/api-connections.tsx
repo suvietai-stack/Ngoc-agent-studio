@@ -9,9 +9,8 @@ import {OAUTH_PROVIDERS,type OAuthProvider} from "@/lib/oauth-providers";
 type Props={initial:WorkspaceData;filter:string;encryptionConfigured:boolean;envOpenAI:boolean;oauthReady:{google:boolean;meta:boolean;ads:boolean}};
 export function APIConnections({initial,filter,encryptionConfigured,envOpenAI,oauthReady}:Props){
  const router=useRouter(),[pending,start]=useTransition(),[message,setMessage]=useState("");
- const [project,setProject]=useState(filter==="all"?initial.projects[0]?.id||"":filter);
- const preferred=filter!=="all"&&initial.projects.some(p=>p.id===filter)?filter:project;
- const selected=initial.projects.some(p=>p.id===preferred)?preferred:initial.projects[0]?.id||"";
+ const selected=filter;
+ const projectName=initial.projects.find(p=>p.id===selected)?.name||"Chưa chọn";
  const providers:[Provider,string,string][]=[
   ["openai","OpenAI","Tạo nội dung và chat Đốm AI; API key lưu mã hóa riêng theo dự án."],
   ["wordpress","WordPress","Dùng Application Password; chỉ kiểm tra quyền đọc, chưa đăng bài."]
@@ -37,7 +36,7 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI,oa
  return <section className="panel"><div className="panel-head"><h3>Trung tâm kết nối API</h3><span className="chip"><ShieldCheck size={13}/> Khóa mã hóa ở máy chủ</span></div>
   <p className="muted">Chọn dự án, thêm thông tin API rồi kiểm tra. Không hiển thị lại mật khẩu hoặc API key sau khi lưu. Chưa có tự xuất bản.</p>
   {message&&<div className="alert" role="status">{message}<button onClick={()=>setMessage("")}>×</button></div>}
-  <div className="ops-inline"><label htmlFor="connection-project">Dự án</label><select id="connection-project" value={selected} onChange={e=>{setProject(e.target.value);setMessage("")}}>{initial.projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+  <div className="ops-inline"><span className="chip on"><ShieldCheck size={14}/> Kết nối riêng của: {projectName}</span></div>
   {!encryptionConfigured&&<p className="ops-warning"><b>Chưa bật kho khóa an toàn.</b> Quản trị viên cần đặt INTEGRATION_ENCRYPTION_KEY (Base64 của 32 byte) trên Vercel và áp dụng migration 004. Không nhập khóa thật khi chưa kích hoạt.</p>}
   {!selected&&<p className="muted">Hãy tạo dự án trước khi cấu hình API.</p>}
   <div className="cards integrations">{providers.map(([id,title,description])=>{

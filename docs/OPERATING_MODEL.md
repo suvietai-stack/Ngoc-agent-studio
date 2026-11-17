@@ -106,3 +106,11 @@ These remaining items must be verified against the real provider accounts and pe
 - Task and project website inputs use the same HTTPS-only, no-literal-IP URL parser. WordPress connection testing provides provider HTTP status diagnostics without revealing credentials.
 - Server-side tab queries load deterministic 200-row pages up to 2,000 records per table and explicitly warn when the cap is hit. This is a safety cap, **not full unlimited pagination**.
 - The owner still needs to run a real authenticated Agent draft / approval integration test. No automatic external publication is enabled.
+
+### Project-first boundary (user experience and server data)
+
+- After owner login, `/` shows only the owner's project cards. The project has to be explicitly chosen even if there is only one.
+- Workspace requires `/?project=<owned_uuid>`; without an owned project parameter, show the picker and never load unrelated workspace tables.
+- Every workspace query has `owner_id` AND `project_id` predicates; only the selected project metadata reaches client components. No all-project switcher remains.
+- **Chuyển dự án** returns to the picker. Per-project API keys and OAuth tokens stay in the original project's vault and are not implicitly shared.
+- Invalid or foreign UUIDs display a non-leaking picker warning. Module deep links preserve their tab across project choice and OAuth callback.
