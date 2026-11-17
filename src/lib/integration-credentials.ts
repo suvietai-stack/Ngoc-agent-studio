@@ -5,7 +5,7 @@ import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 import type {SupabaseClient} from "@supabase/supabase-js";
 import type {OAuthProvider} from "@/lib/oauth-providers";
 
-export type Provider="openai"|"wordpress"|OAuthProvider;
+export type Provider="openai"|"wordpress"|"google_oauth_app"|"meta_oauth_app"|OAuthProvider;
 export function encryptionReady():boolean {
  const key=process.env.INTEGRATION_ENCRYPTION_KEY;
  if(!key)return false;

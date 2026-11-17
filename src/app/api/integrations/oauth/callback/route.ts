@@ -29,11 +29,12 @@ export async function GET(req:NextRequest){
   if(error||!user||!isStudioOwner(user.id))throw new Error("Owner authorization failed");
   const {data:project}=await db.from("projects").select("id").eq("id",projectId).eq("owner_id",user.id).maybeSingle();
   if(!project)throw new Error("Project unavailable");
-  const credentials=await exchangeOAuthCode(s.provider,code);
+  const ctx={db,ownerId:user.id,projectId};
+  const credentials=await exchangeOAuthCode(s.provider,code,ctx);
   let verified=false;
   let savedCredentials=credentials;
   try{
-   const test=await verifyOAuth(s.provider,credentials);
+   const test=await verifyOAuth(s.provider,credentials,ctx);
    verified=test.ok;savedCredentials=test.credentials;
   }catch{verified=false;}
   const {error:secretError}=await db.from("integration_secrets").upsert({

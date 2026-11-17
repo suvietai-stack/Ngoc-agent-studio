@@ -21,7 +21,7 @@ export async function GET(req:NextRequest){
  if(!project)return NextResponse.json({ok:false,message:"Không tìm thấy dự án."},{status:404});
  const nonce=randomBytes(32).toString("base64url");
  try{
-  const url=authorizationUrl(provider,nonce);
+  const url=await authorizationUrl(provider,nonce,{db,ownerId:user.id,projectId});
   const response=NextResponse.redirect(url);
   response.cookies.set("nas_oauth_state",Buffer.from(JSON.stringify({provider,projectId,nonce})).toString("base64url"),{
    httpOnly:true,secure:true,sameSite:"lax",maxAge:600,path:"/api/integrations/oauth/callback"

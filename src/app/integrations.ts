@@ -102,3 +102,44 @@ export async function disconnectAction(projectId:string,provider:Provider):Promi
   return done("Đã xóa kết nối trên app. Muốn thu hồi quyền OAuth hoàn toàn, hãy gỡ quyền ứng dụng trên Google/Meta.");
  }catch{return fail("Không thể ngắt kết nối. Vui lòng thử lại.");}
 }
+
+/** Store OAuth app credentials in the project vault, not in browser storage. */
+export async function saveOAuthAppConfigAction(form:FormData):Promise<Result>{
+ const parsed=z.object({project_id:z.uuid(),kind:z.enum(["google","meta"]),client_id:z.string().trim().min(5).max(400),
+  client_secret:z.string().trim().min(5).max(4096),developer_token:z.string().trim().max(1000).optional()}).safeParse({
+  project_id:form.get("project_id"),kind:form.get("kind"),client_id:form.get("client_id"),
+  client_secret:form.get("client_secret"),developer_token:form.get("developer_token")||""
+ });
+ if(!parsed.success)return fail("Cần nhập Client ID, Client Secret và đúng dự án.");
+ if(!encryptionReady())return fail("Kho mã hóa chưa sẵn sàng.");
+ try{
+  const {db,user}=await context();
+  const p=parsed.data;
+  const {data:project}=await db.from("projects").select("id").eq("id",p.project_id).eq("owner_id",user.id).maybeSingle();
+  if(!project)return fail("Không tìm thấy dự án.");
+  const provider=p.kind==="google"?"google_oauth_app":"meta_oauth_app";
+  const encrypted_credentials=encryptCredentials({clientId:p.client_id,clientSecret:p.client_secret,
+   ...(p.kind==="google"&&p.developer_token?{developerToken:p.developer_token}:{})});
+  const {error}=await db.from("integration_secrets").upsert({
+   owner_id:user.id,project_id:p.project_id,provider,encrypted_credentials,
+   tested_at:null,updated_at:new Date().toISOString()
+  },{onConflict:"owner_id,project_id,provider"});
+  if(error)return fail("Không lưu được thông tin OAuth App. Kiểm tra migration 008.");
+  const {error:statusError}=await db.from("integrations").upsert({
+   owner_id:user.id,project_id:p.project_id,provider,
+   display_name:p.kind==="google"?(p.developer_token?"Google OAuth App + Ads":"Google OAuth App"):"Meta OAuth App",
+   connection_status:"disconnected"
+  },{onConflict:"owner_id,project_id,provider"});
+  if(statusError)return fail("Đã mã hóa cấu hình nhưng không lưu được trạng thái.");
+  const providers=p.kind==="google"?["gsc","ga4","drive","google_ads"]:["facebook","instagram"];
+  const {error:removeTokens}=await db.from("integration_secrets").delete()
+   .eq("owner_id",user.id).eq("project_id",p.project_id).in("provider",providers);
+  const {error:removeStatus}=await db.from("integrations").delete()
+   .eq("owner_id",user.id).eq("project_id",p.project_id).in("provider",providers);
+  if(removeTokens||removeStatus)return fail("Đã lưu OAuth App nhưng chưa xóa hết token cũ. Hãy kiểm tra trước khi cấp quyền lại.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"integration.oauth_app_saved",
+   target_table:"integrations",details:{provider,project_id:p.project_id}});
+  revalidatePath("/");
+  return done("Đã mã hóa cấu hình "+(p.kind==="google"?"Google":"Meta")+" OAuth của dự án. Bấm Kết nối để cấp quyền chính thức.");
+ }catch{return fail("Không thể lưu cấu hình OAuth ứng dụng.");}
+}
