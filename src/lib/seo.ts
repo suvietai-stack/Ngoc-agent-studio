@@ -14,12 +14,13 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
  const root=site.toString();
  const limit: number=mode==="extended"?30:8;
  const checkedAt=new Date().toISOString();
+ const began=Date.now();
  const failures:Failed[]=[];
  const inspected:AuditPage[]=[];
  let robotsSource="không đọc được",sitemapSource="không tìm thấy",sitemapCount=0;
  async function fetchSafe(url:string,kind:"html"|"xml"|"text"){
   const accepted=kind==="html"?"text/html":kind==="xml"?"application/xml,text/xml":"text/plain";
-  const r=await publicHttpsGet(url,{maxBytes:kind==="html"?600000:450000,timeoutMs:6000,headers:{Accept:accepted,"User-Agent":"NgocAgentStudio-SEOAudit/2.0"}});
+  const r=await publicHttpsGet(url,{maxBytes:kind==="html"?600000:450000,timeoutMs:4500,headers:{Accept:accepted,"User-Agent":"NgocAgentStudio-SEOAudit/2.0"}});
   if(r.status!==200)throw new Error("HTTP "+r.status);
   const type=r.contentType.toLowerCase();
   if(kind==="html"&&!type.includes("text/html"))throw new Error("Không phải trang HTML.");
@@ -47,6 +48,7 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
  const sitemapCandidates=[new URL("/sitemap.xml",site.origin).toString(),new URL("/sitemap_index.xml",site.origin).toString(),new URL("/wp-sitemap.xml",site.origin).toString()];
  const visitedSitemaps=new Set<string>();
  for(const mapUrl of sitemapCandidates){
+  if(Date.now()-began>16000)break;
   if(visitedSitemaps.has(mapUrl))continue;
   visitedSitemaps.add(mapUrl);
   try{
@@ -54,10 +56,11 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
    const direct=sitemapUrls(xml,root,450);
    direct.forEach(accept);
    sitemapCount+=direct.length;sitemapSource=mapUrl;
-   for(const child of sitemapRefs(xml,root,4)){
-    if(visitedSitemaps.has(child))continue;
-    visitedSitemaps.add(child);
-    try{const sub=await fetchSafe(child,"xml");const urls=sitemapUrls(sub,root,450);urls.forEach(accept);sitemapCount+=urls.length;}catch{/* some child indexes may be inaccessible */}
+   const childMaps=sitemapRefs(xml,root,4).filter(child=>!visitedSitemaps.has(child));
+   childMaps.forEach(child=>visitedSitemaps.add(child));
+   const children=await Promise.allSettled(childMaps.map(child=>fetchSafe(child,"xml")));
+   for(const child of children)if(child.status==="fulfilled"){
+    const urls=sitemapUrls(child.value,root,450);urls.forEach(accept);sitemapCount+=urls.length;
    }
    if(direct.length||sitemapRefs(xml,root,1).length)break;
   }catch{/* another standard sitemap location may exist */}
@@ -69,6 +72,7 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
  const queue=fromSitemap.slice(0,limit-1);
  // Five HTTPS fetches max in parallel. Per-target HTTP and content-type failures are recorded.
  for(let index=0;index<queue.length;index+=5){
+  if(Date.now()-began>42000)break; // Keep Vercel action execution bounded.
   const batch=queue.slice(index,index+5);
   const results=await Promise.allSettled(batch.map(url=>fetchSafe(url,"html")));
   results.forEach((result,i)=>{
