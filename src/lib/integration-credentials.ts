@@ -1,7 +1,7 @@
 import "server-only";
 import {createCipheriv,createDecipheriv,randomBytes} from "node:crypto";
-import {lookup} from "node:dns/promises";
-import {isPublicIP} from "@/lib/seo";
+import {publicHttpsGet} from "@/lib/public-http";
+import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 import type {SupabaseClient} from "@supabase/supabase-js";
 
 export type Provider="openai"|"wordpress";
@@ -35,7 +35,8 @@ export function decryptCredentials(value:string):Record<string,string> {
 export async function getStoredCredentials(db:SupabaseClient,ownerId:string,projectId:string,provider:Provider):Promise<Record<string,string>|null>{
  const {data,error}=await db.from("integration_secrets").select("encrypted_credentials")
   .eq("owner_id",ownerId).eq("project_id",projectId).eq("provider",provider).maybeSingle();
- if(error||!data)return null;
+ if(error)throw new Error("Không đọc được cấu hình API của dự án.");
+ if(!data)return null;
  return decryptCredentials(data.encrypted_credentials);
 }
 export async function getOpenAIKey(db:SupabaseClient,ownerId:string,projectId:string):Promise<string|undefined> {
@@ -48,13 +49,11 @@ export async function verifyConnection(provider:Provider,credentials:Record<stri
   return result.ok;
  }
  if(!website)throw new Error("Dự án chưa có website HTTPS.");
- const url=new URL(website);
- if(url.protocol!=="https:"||url.username||url.password||url.port||!url.hostname.includes("."))
-  throw new Error("WordPress yêu cầu website HTTPS hợp lệ.");
- const addresses=await lookup(url.hostname,{all:true});
- if(!addresses.length||addresses.some(a=>!isPublicIP(a.address)))throw new Error("Tên miền website không công khai.");
+ const url=parsePublicHttpsUrl(website);
  const endpoint=new URL("/wp-json/wp/v2/users/me",url.origin);
  const authorization=Buffer.from(credentials.username+":"+credentials.appPassword,"utf8").toString("base64");
- const response=await fetch(endpoint,{headers:{Authorization:"Basic "+authorization,Accept:"application/json"},redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(12000)});
- return response.ok;
+ const response=await publicHttpsGet(endpoint.toString(),{
+  maxBytes:64000,timeoutMs:12000,headers:{Authorization:"Basic "+authorization,Accept:"application/json"}
+ });
+ return response.status>=200&&response.status<300;
 }
