@@ -16,6 +16,9 @@ export async function publicHttpsGet(raw:string,options:{maxBytes:number;timeout
   const fail=(err:Error)=>{if(settled)return;settled=true;reject(err);};
   const req=request(url,{
    method:"GET",servername:url.hostname,rejectUnauthorized:true,timeout:options.timeoutMs,
+   // Node.js 20+ defaults to family autoselection (lookup with all:true). Since our
+   // DNS-pinning callback returns exactly one validated IPv4, use single-family lookup.
+   family:4,autoSelectFamily:false,
    lookup:(_host,_opts,callback)=>callback(null,address,4),
    headers:{"User-Agent":"NgocAgentStudio/1.0",Accept:"text/html,application/json",...options.headers}
   },res=>{

@@ -1,5 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {isPublicIPv4,parsePublicHttpsUrl} from "../src/lib/network-safety.mjs";
 
 test("public HTTPS URL accepts only safe hostnames",()=>{
@@ -14,4 +15,10 @@ test("private, reserved, and documentation IPv4 ranges are denied",()=>{
  }
  assert.equal(isPublicIPv4("8.8.8.8"),true);
  assert.equal(isPublicIPv4("1.1.1.1"),true);
+});
+
+test("pinned HTTPS requests disable Node.js 22 family autoselection",()=>{
+ const source=readFileSync(new URL("../src/lib/public-http.ts",import.meta.url),"utf8");
+ assert.match(source,/family:\s*4,\s*autoSelectFamily:\s*false/);
+ assert.match(source,/lookup:[^\n]*callback\(null,address,4\)/);
 });
