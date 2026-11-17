@@ -33,9 +33,9 @@ test("Login and recovery UI link to diagnostic, without asking to create a secon
 test("Session recovery and logout only clear the current device",()=>{
  const login=source("src/components/login.tsx");
  const actions=source("src/app/actions.ts");
- assert.match(login,/auth\\.signOut\\(\\{scope:"local"\\}\\)/);
- assert.match(login,/type="button" disabled=\\{busy\\|\\|recovering\\}/);
- assert.match(login,/Không đăng nhập được\\? Xóa phiên cũ trên thiết bị/);
- assert.match(actions,/db\\.auth\\.signOut\\(\\{scope:"local"\\}\\)/);
- assert.doesNotMatch(actions,/db\\.auth\\.signOut\\(\\)/);
+ assert.match(login,/auth\.signOut\(\{scope:"local"\}\)/);
+ assert.match(login,/type="button" disabled=\{busy\|\|recovering\}/);
+ assert.match(login,/Không đăng nhập được\? Xóa phiên cũ trên thiết bị/);
+ assert.match(actions,/db\.auth\.signOut\(\{scope:"local"\}\)/);
+ assert.doesNotMatch(actions,/db\.auth\.signOut\(\)/);
 });
