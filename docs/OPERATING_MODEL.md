@@ -97,3 +97,12 @@ These remaining items must be verified against the real provider accounts and pe
 - Credentials in the project vault take priority over optional Vercel environment credentials. Google Ads developer token can be entered in the Google form.
 - Changing a project's OAuth app credentials deletes old provider tokens/status for that project, requiring re-consent. It does not touch other projects.
 - Configure Google/Meta authorized callback URL `https://ngoc-agent-studio.vercel.app/api/integrations/oauth/callback` before clicking Connect; OAuth app registration and provider App Review cannot be automated without owner access.
+
+## Release checks and security hardening
+
+- Vercel's build invokes `npm test` **before** Next.js compilation. This provides a test gate when GitHub Actions runners cannot start; an unusable GitHub job is not treated as a passing check.
+- Migration 009 implements an immutable approval guard on content and tasks at PostgreSQL level. `approve_content_asset` is owner-checked SECURITY DEFINER because the authenticated role is not allowed to update the approval status column directly. Unapproved drafts alone remain editable by owner.
+- `recover_stale_task` only runs on owner-owned `running` tasks older than 15 minutes; it reuses any saved draft and never calls OpenAI.
+- Task and project website inputs use the same HTTPS-only, no-literal-IP URL parser. WordPress connection testing provides provider HTTP status diagnostics without revealing credentials.
+- Server-side tab queries load deterministic 200-row pages up to 2,000 records per table and explicitly warn when the cap is hit. This is a safety cap, **not full unlimited pagination**.
+- The owner still needs to run a real authenticated Agent draft / approval integration test. No automatic external publication is enabled.

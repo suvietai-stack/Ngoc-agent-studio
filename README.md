@@ -71,3 +71,11 @@ npm run build
 ```
 
 Supabase migrations are in `supabase/migrations`. Deploy only against the dedicated Ngọc database. See `docs/OPERATING_MODEL.md` for the operational safety model and approval gates.
+
+### Production hardening (migration 009)
+
+- Approved content is immutable at PostgreSQL trigger level; only owner-authorized approval RPC may set the approval state. Draft-only body edits are still allowed.
+- A **Khôi phục nếu kẹt** action safely restores tasks in `running` for over 15 minutes, reusing saved drafts instead of calling AI again.
+- Project URLs must use public HTTPS with no literal IP or custom port; WordPress connection failures include safe HTTP diagnostics.
+- Each data source is paged in 200-row steps. A warning appears after 2,000 records; unlimited server-side pagination is a later performance enhancement.
+- Vercel's `npm run build` runs Node tests before Next.js compilation. Do not confuse a Vercel build PASS with a live provider OAuth or manual Agent end-to-end test.
