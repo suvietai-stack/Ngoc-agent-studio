@@ -2,6 +2,7 @@ import Link from "next/link";
 import {AlertCircle,CheckCircle2,Database,RefreshCw,ShieldAlert,ShieldCheck} from "lucide-react";
 import {createClient,hasDatabaseConfig} from "@/lib/supabase/server";
 import {isStudioOwner} from "@/lib/access";
+import {workspaceOrderColumn} from "@/lib/workspace-order.mjs";
 export const dynamic="force-dynamic";
 
 type Check={title:string;ok:boolean;description:string};
@@ -40,7 +41,8 @@ async function checkDatabase():Promise<{checks:Check[];ready:boolean}>{
   const projectId=projects[0].id;
   const results=await Promise.all(tables.map(async table=>{
    const {error}=await db.from(table).select("id").eq("owner_id",user.id)
-    .eq("project_id",projectId).limit(1);
+    .eq("project_id",projectId).order(workspaceOrderColumn(table),{ascending:false})
+    .order("id",{ascending:false}).limit(1);
    return {table,error};
   }));
   const errors=results.filter(item=>Boolean(item.error));
