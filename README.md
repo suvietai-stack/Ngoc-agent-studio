@@ -76,3 +76,13 @@ Chỉ chạy migrations ở Supabase project `ngoc-agent-studio-db`. Tuyệt đ�
 - OAuth Google/Meta cần thêm app credentials, consent screen và callback riêng trước khi bật; không dán access token vào các form chưa hỗ trợ.
 - AI run có thể dùng OpenAI API key riêng theo dự án hoặc \`OPENAI_API_KEY\` máy chủ. Đốm lấy ngữ cảnh theo dự án; không được mượn Agent của dự án khác.
 - Chỉ push branch tính năng, chạy typecheck/build, kiểm tra Vercel Preview rồi mới merge vào \`main\`. Không triển khai migration lên Base Sứ Việt.
+
+
+## v5 — AI draft automation (opt-in, scheduled)
+- Migration 005 adds projects.auto_run_enabled, default **false** for all projects.
+- Vercel Cron runs once daily at 02:00 UTC (Hobby plan). Supabase Cron continues to queue draft tasks hourly.
+- Server-only environment: SUPABASE_SERVICE_ROLE_KEY from **ngoc-agent-studio-db**, STUDIO_OWNER_UID, CRON_SECRET, AUTO_AGENT_RUNNER_ENABLED=true. Never expose service role or cron secret in NEXT_PUBLIC_.
+- The worker refuses any database host other than zvbwknltooymuenpvptr.supabase.co.
+- Enable automatic drafting per project from Tự động hóa after configuring keys/migrations; limit AUTO_AI_DAILY_LIMIT (default 3, max 20) runs/day, skip blocked workflow stages and jobs with 3 failed executions.
+- Auto jobs create **drafts only**, with mandatory human approval. No publishing/sending/deleting.
+- Draft content is editable before approval; approved outputs are immutable.
