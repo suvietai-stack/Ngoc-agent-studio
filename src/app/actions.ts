@@ -71,3 +71,46 @@ export async function deleteKnowledgeAction(id:string):Promise<Result>{
   revalidatePath("/");return ok("Đã xóa mục tri thức.");
  }catch(e){return fail(err(e))}
 }
+
+
+export async function updateProjectAction(id:string,form:FormData):Promise<Result>{
+ if(!z.uuid().safeParse(id).success)return fail("Dự án không hợp lệ.");
+ const p=z.object({name:z.string().trim().min(2).max(120),category:z.string().trim().max(80),
+  website_url:z.union([z.url().max(500),z.literal("")]),description:z.string().max(1500),
+  status:z.enum(["active","paused","archived"])}).safeParse({
+   name:form.get("name"),category:form.get("category")||"SEO & Content",
+   website_url:form.get("website_url")||"",description:form.get("description")||"",status:form.get("status")
+  });
+ if(!p.success)return fail("Dữ liệu dự án không hợp lệ.");
+ if(p.data.website_url){
+  try{const u=new URL(p.data.website_url);
+   if(u.protocol!=="https:"||u.username||u.password||u.port||!u.hostname.includes("."))return fail("Website phải là địa chỉ HTTPS hợp lệ.");
+  }catch{return fail("Website không hợp lệ.");}
+ }
+ try{
+  const {db,user}=await auth();
+  const {data,error}=await db.from("projects").update({
+   ...p.data,website_url:p.data.website_url||null,
+   ...(p.data.status!=="active"?{auto_run_enabled:false}:{}),updated_at:new Date().toISOString()
+  }).eq("id",id).eq("owner_id",user.id).select("id").maybeSingle();
+  if(error||!data)return fail("Không cập nhật được dự án.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"project.updated",target_table:"projects",target_id:id});
+  revalidatePath("/");return ok("Đã cập nhật dự án.");
+ }catch(e){return fail(err(e))}
+}
+export async function updateAgentAction(id:string,form:FormData):Promise<Result>{
+ if(!z.uuid().safeParse(id).success)return fail("Agent không hợp lệ.");
+ const p=z.object({name:z.string().trim().min(2).max(100),purpose:z.string().trim().min(6).max(500),
+  instructions:z.string().trim().min(10).max(20000),model:z.string().trim().min(3).max(100)}).safeParse({
+   name:form.get("name"),purpose:form.get("purpose"),instructions:form.get("instructions"),model:form.get("model")
+  });
+ if(!p.success)return fail("Thông tin Agent không hợp lệ.");
+ try{
+  const {db,user}=await auth();
+  const {data,error}=await db.from("agents").update({...p.data,updated_at:new Date().toISOString()})
+   .eq("id",id).eq("owner_id",user.id).select("id").maybeSingle();
+  if(error||!data)return fail("Không cập nhật được Agent.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"agent.updated",target_table:"agents",target_id:id});
+  revalidatePath("/");return ok("Đã cập nhật Agent.");
+ }catch(e){return fail(err(e))}
+}
