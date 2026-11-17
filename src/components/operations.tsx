@@ -16,7 +16,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
  const projectAiReady=initial.integrations.some(c=>c.project_id===selectedProject&&c.provider==="openai"&&c.connection_status==="connected");
  const projectMap=new Map(projects.map(p=>[p.id,p.name]));
  const schedules=initial.automations.filter(s=>s.project_id===selectedProject);
- const assets=initial.content.filter(a=>a.project_id===selectedProject);
+ const assets=initial.content.filter(a=>a.project_id===selectedProject&&a.channel!=="seo-audit");
  const chatMessages=initial.messages.filter(m=>m.project_id===selectedProject);
  function call(fn:()=>Promise<Result>){start(async()=>{try{const r=await fn();setNotice(r.message);router.refresh()}catch{setNotice("Không thể thực hiện. Kiểm tra kết nối.")}})}
  function scheduleSubmit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const data=new FormData(e.currentTarget);call(async()=>{const r=await createScheduleAction(data);if(r.ok)setShowForm(false);return r})}
@@ -68,7 +68,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
   </div>}</section>
  </>}
  {tab==="content"&&<>
-  <div className="ops-toolbar"><div><h3>Thư viện bản nháp và báo cáo</h3><p>Nội dung do AI tạo hoặc SEO Audit ghi vào đây. Mọi nội dung đều phải được duyệt thủ công; hiện chưa kết nối công cụ đăng bài.</p></div><span className="chip on">{assets.length} tài liệu</span></div>
+  <div className="ops-toolbar"><div><h3>Thư viện nội dung và bản nháp</h3><p>Nội dung AI đã tạo để bạn kiểm tra, chỉnh sửa và duyệt. Báo cáo SEO có màn hình riêng trong mục SEO Website; hiện chưa xuất bản ra ngoài.</p></div><span className="chip on">{assets.length} tài liệu</span></div>
   {assets.length===0?<section className="panel ops-placeholder"><FileText size={36}/><b>Chưa có bản nháp</b><p>Hãy chạy một công việc AI ở tab Công việc, hoặc tạo báo cáo audit trong Tự động hóa.</p></section>:<div className="ops-list">{assets.map(a=><article className="panel ops-asset" key={a.id}><div className="ops-assethead"><div><span className="eyebrow">{a.channel||"CONTENT"} · {projectMap.get(a.project_id||"")||"Dự án"}</span><h3>{a.title}</h3><small>{a.created_at?new Date(a.created_at).toLocaleString("vi-VN"):""}</small></div><span className={"chip "+(a.status==="approved"?"on":"")}>{a.status==="approved"?"Đã duyệt":"Bản nháp"}</span></div><details><summary>Xem nội dung đầy đủ</summary><pre className="ops-content">{a.body}</pre></details><div className="ops-inline"><button className="ops-outline" onClick={()=>{void navigator.clipboard.writeText(a.body||"");setNotice("Đã sao chép nội dung.")}}>Sao chép</button>
  {a.status!=="approved"&&<><button className="ops-outline" onClick={()=>{setEditing(a.id);setEditBody(a.body||"")}}>Chỉnh sửa</button>
  <button className="primary" disabled={pending} onClick={()=>call(()=>approveContentAction(a.id))}><CheckCircle2 size={15}/> Duyệt nội dung</button></>}</div>
