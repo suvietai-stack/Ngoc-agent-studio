@@ -63,8 +63,11 @@ export async function testConnectionAction(projectId:string,provider:Provider):P
   let verified=false;
   try{verified=await verifyConnection(provider,credentials,project.website_url);}
   catch{verified=false;}
-  const {error}=await db.from("integrations").update({connection_status:verified?"connected":"error"})
-   .eq("owner_id",user.id).eq("project_id",projectId).eq("provider",provider);
+  const {error}=await db.from("integrations").upsert({
+   owner_id:user.id,project_id:projectId,provider,
+   display_name:provider==="openai"?"OpenAI API":"WordPress",
+   connection_status:verified?"connected":"error"
+  },{onConflict:"owner_id,project_id,provider"});
   if(error)return fail("Không cập nhật được trạng thái kiểm tra.");
   if(verified)await db.from("integration_secrets").update({tested_at:new Date().toISOString()})
    .eq("owner_id",user.id).eq("project_id",projectId).eq("provider",provider);

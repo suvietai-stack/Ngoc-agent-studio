@@ -40,8 +40,14 @@ export async function getStoredCredentials(db:SupabaseClient,ownerId:string,proj
  return decryptCredentials(data.encrypted_credentials);
 }
 export async function getOpenAIKey(db:SupabaseClient,ownerId:string,projectId:string):Promise<string|undefined> {
- const stored=await getStoredCredentials(db,ownerId,projectId,"openai");
- return stored?.apiKey||process.env.OPENAI_API_KEY||undefined;
+ const {data:connection,error}=await db.from("integrations").select("connection_status")
+  .eq("owner_id",ownerId).eq("project_id",projectId).eq("provider","openai").maybeSingle();
+ if(error)throw new Error("Không kiểm tra được trạng thái kết nối OpenAI.");
+ if(connection?.connection_status==="connected"){
+  const stored=await getStoredCredentials(db,ownerId,projectId,"openai");
+  if(stored?.apiKey)return stored.apiKey;
+ }
+ return process.env.OPENAI_API_KEY||undefined;
 }
 export async function verifyConnection(provider:Provider,credentials:Record<string,string>,website?:string|null):Promise<boolean>{
  if(provider==="openai"){

@@ -18,7 +18,8 @@ export async function executeNextAutoDraft():Promise<Outcome>{
   .eq("owner_id",owner).gte("created_at",today.toISOString());
  if(countError)throw new Error("Không kiểm tra được hạn mức AI theo ngày.");
  if((count||0)>=dailyMax)return {processed:false,reason:"Đã đạt hạn mức chạy AI trong ngày."};
- const {data:projects,error:projectError}=await db.from("projects").select("id,name,website_url").eq("owner_id",owner).eq("auto_run_enabled",true);
+ const {data:projects,error:projectError}=await db.from("projects").select("id,name,website_url")
+  .eq("owner_id",owner).eq("status","active").eq("auto_run_enabled",true);
  if(projectError)throw new Error("Cần áp dụng migration auto-run 005.");
  if(!projects?.length)return {processed:false,reason:"Không có dự án nào bật tự tạo bản nháp."};
  const ids=projects.map(p=>p.id);
@@ -37,6 +38,16 @@ export async function executeNextAutoDraft():Promise<Outcome>{
   .in("project_id",ids).in("status",["draft","failed"]).order("created_at",{ascending:true}).limit(100);
  if(taskError)throw new Error("Không tải được hàng đợi Agent.");
  for(const task of tasks||[]){
+  const {data:existing,error:existingError}=await db.from("content_assets").select("id,status")
+   .eq("owner_id",owner).eq("task_id",task.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if(existingError)throw new Error("Không kiểm tra được nội dung hiện có.");
+  if(existing){
+   const newStatus=existing.status==="approved"?"approved":"pending_approval";
+   const {error:repairedError}=await db.from("tasks").update({status:newStatus,updated_at:new Date().toISOString()})
+    .eq("owner_id",owner).eq("id",task.id).in("status",["draft","failed"]);
+   if(repairedError)throw new Error("Không khôi phục được trạng thái nhiệm vụ.");
+   return {processed:true,reason:"Đã khôi phục kết quả Agent có sẵn; không gọi AI thêm.",taskId:task.id};
+  }
   const {count:failures}=await db.from("task_runs").select("id",{count:"exact",head:true})
    .eq("owner_id",owner).eq("task_id",task.id).eq("state","failed");
   if((failures||0)>=3)continue;

@@ -9,7 +9,8 @@ type Props={initial:WorkspaceData;filter:string;encryptionConfigured:boolean;env
 export function APIConnections({initial,filter,encryptionConfigured,envOpenAI}:Props){
  const router=useRouter(),[pending,start]=useTransition(),[message,setMessage]=useState("");
  const [project,setProject]=useState(filter==="all"?initial.projects[0]?.id||"":filter);
- const selected=initial.projects.some(p=>p.id===project)?project:initial.projects[0]?.id||"";
+ const preferred=filter!=="all"&&initial.projects.some(p=>p.id===filter)?filter:project;
+ const selected=initial.projects.some(p=>p.id===preferred)?preferred:initial.projects[0]?.id||"";
  const providers:[Provider,string,string][]=[
   ["openai","OpenAI","Tạo nội dung và chat Đốm AI; API key lưu mã hóa riêng theo dự án."],
   ["wordpress","WordPress","Dùng Application Password; chỉ kiểm tra quyền đọc, chưa đăng bài."]
