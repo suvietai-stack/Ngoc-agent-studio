@@ -7,8 +7,10 @@ export type Row={
  capabilities?:string[];source?:string;summary?:string;output?:string;error_message?:string;
  frequency?:string;next_run_at?:string;last_run_at?:string;last_sign_in_at?:string;
  role?:string;workflow_id?:string|null;workflow_step?:number|null;depends_on_task_id?:string|null;
+ operation_mode?:"manual"|"supervised"|"scheduled";daily_run_limit?:number;
+ input_tokens?:number|null;output_tokens?:number|null;kind?:string;
 };
 export type WorkspaceData={
  projects:Row[];agents:Row[];tasks:Row[];knowledge:Row[];integrations:Row[];runs:Row[];
- automations:Row[];content:Row[];messages:Row[];
+ automations:Row[];content:Row[];messages:Row[];usage:Row[];
 };
