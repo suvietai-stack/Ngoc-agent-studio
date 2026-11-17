@@ -67,7 +67,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{project
   messages:[...data.dom_messages].reverse(),
   workflowDefinitions:data.workflow_definitions,workflowRuns:data.workflow_runs,workflowSteps:data.workflow_step_runs,
   seoCrawls:data.seo_crawl_runs,seoUrls:data.seo_site_urls,seoFindings:data.seo_findings,
-  wpChanges:data.wordpress_changes
+  wpChanges:data.wordpress_changes as unknown as WorkspaceData["wpChanges"]
  };
  return <Workspace initial={initial} incompleteSources={incompleteSources} email={user.email||"Cá nhân"} aiConfigured={data.integrations.some(i=>i.provider==="openai"&&i.connection_status==="connected")} encryptionConfigured={encryptionReady()} envOpenAI={aiReady()} runnerConfigured={Boolean(process.env.CRON_SECRET&&process.env.SUPABASE_SERVICE_ROLE_KEY&&process.env.AUTO_AGENT_RUNNER_ENABLED==="true")} oauthReady={oauthReadyFlags()}/>;
 }
