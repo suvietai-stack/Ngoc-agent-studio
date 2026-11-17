@@ -48,6 +48,7 @@ export function ProjectGate({projects,email,requestedTab,invalidProject=false,tr
      <label>Loại dự án<select name="category" defaultValue="SEO & Content"><option>SEO & Content</option><option>Marketing tổng hợp</option><option>Social Media</option><option>Khác</option></select></label>
      <label>Website HTTPS (nếu có)<input type="url" name="website_url" placeholder="https://ten-mien.vn" maxLength={500}/></label>
      <label>Mô tả<textarea name="description" rows={3} maxLength={1500} placeholder="Mục tiêu của dự án này"/></label>
+     <label className="template-apply-choice"><input type="checkbox" name="seo_first_template" defaultChecked/> Cài bộ mẫu SEO-First (Agent chuyên môn + lịch mẫu đang tắt, không tự đăng/chi tiền)</label>
      <button type="submit" className="primary" disabled={pending}><Check size={15}/>{pending?"Đang tạo...":"Tạo và vào dự án"}</button>
     </form>
    </section>}
