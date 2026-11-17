@@ -3,9 +3,10 @@ import {publicHttpsGet} from "@/lib/public-http";
 import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 import {inspectSeoHtml} from "@/lib/seo-crawl.mjs";
 import {auditUrl,sitemapUrls,sitemapRefs,robotsRules,jsonLdTypes,summarizeAudit} from "@/lib/seo-audit-v2.mjs";
+import type {AuditPage} from "@/lib/seo-audit-v2.mjs";
 
 type Mode="quick"|"extended";
-type Inspected=ReturnType<typeof inspectSeoHtml> & {schemaTypes:string[];incomingSample?:number;kind?:string};
+
 type Failed={url:string;reason:string};
 
 export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>{
@@ -14,7 +15,7 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
  const limit: number=mode==="extended"?30:8;
  const checkedAt=new Date().toISOString();
  const failures:Failed[]=[];
- const inspected:Inspected[]=[];
+ const inspected:AuditPage[]=[];
  let robotsSource="không đọc được",sitemapSource="không tìm thấy",sitemapCount=0;
  async function fetchSafe(url:string,kind:"html"|"xml"|"text"){
   const accepted=kind==="html"?"text/html":kind==="xml"?"application/xml,text/xml":"text/plain";
@@ -33,7 +34,7 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
  }catch{/* robots.txt may not be present; no claims of full robots validation */}
  if(!allowed(site.pathname))throw new Error("robots.txt không cho phép quét URL chính.");
  const homeHtml=await fetchSafe(root,"html");
- const home=inspectSeoHtml(homeHtml,root) as Inspected;
+ const home=inspectSeoHtml(homeHtml,root) as AuditPage;
  home.schemaTypes=jsonLdTypes(homeHtml);
  inspected.push(home);
  const candidates=new Set<string>([root]);
