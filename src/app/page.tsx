@@ -12,6 +12,7 @@ import {Setup} from "@/components/setup";
 import type {WorkspaceData,Row} from "@/lib/types";
 
 export const dynamic="force-dynamic";
+export const maxDuration=60; // Bounded multi-page SEO audit runs through this action route.
 export default async function Home({searchParams}:{searchParams:Promise<{project?:string|string[];tab?:string|string[];new?:string|string[]}>}){
  if(!hasDatabaseConfig())return <Setup/>;
  const db=await createClient();
