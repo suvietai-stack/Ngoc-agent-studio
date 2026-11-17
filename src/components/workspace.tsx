@@ -15,6 +15,7 @@ import {runTaskAction} from "@/app/operations";
 import {createProjectAction,createAgentAction,createTaskAction,createKnowledgeAction,approveTaskAction,toggleAgentAction,signOutAction,type Result} from "@/app/actions";
 import {SeoAuditCenter} from "@/components/seo-audit-center";
 import {parseSeoAuditReport} from "@/lib/seo-audit-report.mjs";
+import {parseAuditV2} from "@/lib/seo-audit-v2.mjs";
 import {BrainCircuit,LayoutDashboard,FolderKanban,Bot,ClipboardList,BookOpen,PlugZap,Clock3,Settings,Plus,ShieldCheck,Check,ArrowRight,LogOut,Menu,X,Activity,Sparkles,CalendarClock,FileText,Play} from "lucide-react";
 type Tab="home"|"seo"|"dom"|"projects"|"agents"|"tasks"|"automations"|"content"|"knowledge"|"integrations"|"runs"|"settings";
 const tabs:[Tab,string,React.ElementType][]=[["home","Tổng quan",LayoutDashboard],["seo","SEO Website",ShieldCheck],["dom","Đốm AI",Sparkles],["projects","Dự án",FolderKanban],["agents","Đội ngũ AI",Bot],["tasks","Công việc",ClipboardList],["automations","Tự động hóa",CalendarClock],["content","Nội dung & báo cáo",FileText],["knowledge","Kho tri thức",BookOpen],["integrations","Kết nối",PlugZap],["runs","Lịch sử chạy",Clock3],["settings","Thiết lập",Settings]];
@@ -48,7 +49,8 @@ export function Workspace({initial,incompleteSources,email,aiConfigured,encrypti
  const aiReadyForSelection=connectedProjects.has(selectedProjectId);
  const activeRuns=initial.runs.filter(r=>r.project_id===filter);
  const lastAudit=[...initial.content].filter(a=>a.project_id===filter&&a.channel==="seo-audit").sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0];
- const seoSummary=lastAudit?parseSeoAuditReport(lastAudit.body):null;
+ const auditV2=lastAudit?parseAuditV2(lastAudit.body):null;
+ const seoSummary=auditV2?{scanned:auditV2.summary.scanned,high:auditV2.summary.severity.high,medium:auditV2.summary.severity.medium}:lastAudit?parseSeoAuditReport(lastAudit.body):null;
  function openTab(nextTab:Tab){
   setTab(nextTab);setNav(false);setNotice("");
   if(filter)window.history.replaceState(null,"",projectWorkspaceHref(filter,nextTab));
