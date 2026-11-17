@@ -17,7 +17,7 @@ export function AgentManager({initial,filter,onAdd}:{initial:WorkspaceData;filte
   {notice&&<div className="alert" role="status">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
   {!rows.length?<p className="muted">Chưa có Agent cho dự án này.</p>:<div className="cards">{rows.map(a=><article className="agent-card" key={a.id}>
    <div className="card-icon"><Bot size={22}/></div><div className="status-top"><span className={"chip"+(a.enabled?" on":"")}>{a.enabled?"Đã bật":"Đang tắt"}</span></div>
-   <h3>{a.name}</h3><p>{a.purpose}</p><small>{a.project_id?projects.get(a.project_id):"Agent dùng chung"} · {a.model}</small>
+   <h3>{a.name}</h3><p>{a.purpose}</p><small>{a.project_id?projects.get(a.project_id):"Không xác định dự án"} · {a.model}</small>
    <div className="card-bottom"><button className="flat" onClick={()=>setEditing(editing===a.id?null:a.id)}><Pencil size={14}/> Sửa</button>
     <button className="flat" disabled={pending} onClick={()=>execute(()=>toggleAgentAction(a.id,!a.enabled))}>{a.enabled?"Tắt Agent":"Bật Agent"}</button></div>
    {editing===a.id&&<form key={a.id} className="form-stack" onSubmit={e=>{e.preventDefault();const data=new FormData(e.currentTarget);execute(()=>updateAgentAction(a.id,data),true);}}>

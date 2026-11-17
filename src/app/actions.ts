@@ -3,6 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {isStudioOwner} from "@/lib/access";
+import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 export type Result={ok:boolean;message:string};
 const fail=(message:string):Result=>({ok:false,message});
 const ok=(message:string):Result=>({ok:true,message});
@@ -11,9 +12,11 @@ function err(error:unknown){if(error instanceof Error&&error.message==="Chưa đ
 export async function createProjectAction(form:FormData):Promise<Result>{
  const p=z.object({name:z.string().trim().min(2).max(120),category:z.string().max(80),website_url:z.union([z.url().max(500),z.literal("")]),description:z.string().max(1500)}).safeParse({name:form.get("name"),category:form.get("category")||"SEO & Content",website_url:form.get("website_url")||"",description:form.get("description")||""});
  if(!p.success)return fail("Tên hoặc URL dự án chưa hợp lệ.");
- try{const {db,user}=await auth();const {error}=await db.from("projects").insert({...p.data,owner_id:user.id,website_url:p.data.website_url||null});if(error)return fail(err(error));revalidatePath("/");return ok("Đã tạo dự án.");}catch(e){return fail(err(e))}
+ let website:string|null=null;
+ if(p.data.website_url){try{website=parsePublicHttpsUrl(p.data.website_url).toString();}catch{return fail("Website dự án phải là địa chỉ HTTPS công khai, không có IP hoặc port tùy chỉnh.");}}
+ try{const {db,user}=await auth();const {error}=await db.from("projects").insert({...p.data,owner_id:user.id,website_url:website});if(error)return fail(err(error));revalidatePath("/");return ok("Đã tạo dự án.");}catch(e){return fail(err(e))}
 }
-const cap=["read","research","draft","edit","publish","external_send","delete"] as const;
+const cap=["read","research","draft","edit"] as const; // No external publish/send/delete implementation.
 export async function createAgentAction(form:FormData):Promise<Result>{
  const p=z.object({name:z.string().trim().min(2).max(100),purpose:z.string().trim().min(6).max(500),instructions:z.string().trim().min(10).max(20000),model:z.string().trim().min(3).max(100),project_id:z.uuid(),capabilities:z.array(z.enum(cap))}).safeParse({name:form.get("name"),purpose:form.get("purpose"),instructions:form.get("instructions"),model:form.get("model")||"gpt-4.1-mini",project_id:form.get("project_id"),capabilities:form.getAll("capabilities").map(String)});
  if(!p.success)return fail("Thông tin Agent chưa đầy đủ hoặc không hợp lệ.");
@@ -24,7 +27,14 @@ export async function createAgentAction(form:FormData):Promise<Result>{
 }
 export async function toggleAgentAction(id:string,enabled:boolean):Promise<Result>{
  if(!z.uuid().safeParse(id).success)return fail("ID Agent không hợp lệ.");
- try{const {db,user}=await auth();const {data,error}=await db.from("agents").update({enabled}).eq("id",id).eq("owner_id",user.id).select("id").maybeSingle();if(error||!data)return fail("Không thể đổi trạng thái.");revalidatePath("/");return ok(enabled?"Đã bật Agent; có thể chạy công việc trong hàng đợi.":"Đã tắt Agent.");}catch(e){return fail(err(e))}
+ try{const {db,user}=await auth();
+ if(enabled){
+  const {data:agent}=await db.from("agents").select("project_id").eq("id",id).eq("owner_id",user.id).maybeSingle();
+  if(!agent?.project_id)return fail("Agent chưa có dự án hợp lệ.");
+  const {data:project}=await db.from("projects").select("status").eq("id",agent.project_id).eq("owner_id",user.id).maybeSingle();
+  if(project?.status!=="active")return fail("Không bật Agent khi dự án đang tạm dừng hoặc đã lưu trữ.");
+ }
+ const {data,error}=await db.from("agents").update({enabled}).eq("id",id).eq("owner_id",user.id).select("id").maybeSingle();if(error||!data)return fail("Không thể đổi trạng thái.");revalidatePath("/");return ok(enabled?"Đã bật Agent; có thể chạy công việc trong hàng đợi.":"Đã tắt Agent.");}catch(e){return fail(err(e))}
 }
 export async function createTaskAction(form:FormData):Promise<Result>{
  const p=z.object({title:z.string().trim().min(4).max(200),brief:z.string().max(5000),project_id:z.uuid(),agent_id:z.union([z.uuid(),z.literal("")]),approval:z.boolean()}).safeParse({title:form.get("title"),brief:form.get("brief")||"",project_id:form.get("project_id"),agent_id:form.get("agent_id")||"",approval:form.get("approval")==="on"});
@@ -96,15 +106,15 @@ export async function updateProjectAction(id:string,form:FormData):Promise<Resul
    website_url:form.get("website_url")||"",description:form.get("description")||"",status:form.get("status")
   });
  if(!p.success)return fail("Dữ liệu dự án không hợp lệ.");
+ let website:string|null=null;
  if(p.data.website_url){
-  try{const u=new URL(p.data.website_url);
-   if(u.protocol!=="https:"||u.username||u.password||u.port||!u.hostname.includes("."))return fail("Website phải là địa chỉ HTTPS hợp lệ.");
-  }catch{return fail("Website không hợp lệ.");}
+  try{website=parsePublicHttpsUrl(p.data.website_url).toString();}
+  catch{return fail("Website phải là địa chỉ HTTPS công khai, không có IP hoặc port tùy chỉnh.");}
  }
  try{
   const {db,user}=await auth();
   const {data,error}=await db.from("projects").update({
-   ...p.data,website_url:p.data.website_url||null,
+   ...p.data,website_url:website,
    ...(p.data.status!=="active"?{auto_run_enabled:false}:{}),updated_at:new Date().toISOString()
   }).eq("id",id).eq("owner_id",user.id).select("id").maybeSingle();
   if(error||!data)return fail("Không cập nhật được dự án.");

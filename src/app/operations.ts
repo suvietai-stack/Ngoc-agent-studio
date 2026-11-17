@@ -5,6 +5,7 @@ import {createClient} from "@/lib/supabase/server";
 import {generateText} from "@/lib/ai";
 import {getOpenAIKey} from "@/lib/integration-credentials";
 import {auditWebsite} from "@/lib/seo";
+import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 import {isStudioOwner} from "@/lib/access";
 import type {Result} from "@/app/actions";
 
@@ -40,11 +41,9 @@ export async function runTaskAction(taskId:string):Promise<Result>{
    return success("Đã khôi phục nội dung có sẵn, không gọi AI lại. Mở tab Nội dung để kiểm tra.");
   }
   const projectApiKey=await getOpenAIKey(db,user.id,task.project_id);
-  if(!projectApiKey)return failure("Chưa có API key OpenAI cho dự án. Thêm trong tab Kết nối hoặc cấu hình biến máy chủ.");
-  let agent:null|Record<string,unknown>=null;
-  if(task.agent_id){const a=await db.from("agents").select("*").eq("id",task.agent_id).eq("owner_id",user.id).maybeSingle();agent=a.data}
-  else{const a=await db.from("agents").select("*").eq("owner_id",user.id).eq("enabled",true).eq("project_id",task.project_id).limit(100);
-   agent=a.data?.[0]||null;}
+  if(!projectApiKey)return failure("Chưa có API key OpenAI đã xác minh cho dự án này. Vào tab Kết nối để kiểm tra.");
+  if(!task.agent_id)return failure("Nhiệm vụ chưa được phân cho Agent. Vào Công việc → Sửa và chọn Agent đúng dự án.");
+  const {data:agent}=await db.from("agents").select("*").eq("id",task.agent_id).eq("owner_id",user.id).maybeSingle();
   if(!agent||!agent.enabled)return failure("Công việc cần một Agent đã bật.");
   if(agent.project_id!==task.project_id)return failure("Agent không thuộc dự án này.");
   let upstreamContext="";
@@ -162,18 +161,16 @@ export async function createCampaignAction(projectId:string):Promise<Result>{
 }
 
 export async function createScheduleAction(form:FormData):Promise<Result>{
- const p=z.object({project_id:uuid,agent_id:z.union([uuid,z.literal("")]),title:z.string().trim().min(4).max(180),brief:z.string().trim().max(5000),frequency:z.enum(["daily","weekly"])}).safeParse({project_id:form.get("project_id"),agent_id:form.get("agent_id")||"",title:form.get("title"),brief:form.get("brief")||"",frequency:form.get("frequency")});
+ const p=z.object({project_id:uuid,agent_id:uuid,title:z.string().trim().min(4).max(180),brief:z.string().trim().max(5000),frequency:z.enum(["daily","weekly"])}).safeParse({project_id:form.get("project_id"),agent_id:form.get("agent_id"),title:form.get("title"),brief:form.get("brief")||"",frequency:form.get("frequency")});
  if(!p.success)return failure("Nhập đủ dự án, tiêu đề và lịch chạy.");
  try{const {db,user}=await session();
   const {data:project}=await db.from("projects").select("id,status")
    .eq("id",p.data.project_id).eq("owner_id",user.id).maybeSingle();
   if(!project||project.status!=="active")return failure("Chỉ tạo lịch cho dự án đang hoạt động.");
-  if(p.data.agent_id){
-   const {data:agent}=await db.from("agents").select("project_id,enabled").eq("id",p.data.agent_id).eq("owner_id",user.id).maybeSingle();
-   if(!agent||agent.project_id!==p.data.project_id)return failure("Agent của lịch không thuộc dự án này.");
-   if(!agent.enabled)return failure("Agent của lịch phải được bật.");
-  }
-  const {error}=await db.from("automation_schedules").insert({...p.data,agent_id:p.data.agent_id||null,owner_id:user.id,enabled:true,next_run_at:new Date().toISOString()});
+  const {data:agent}=await db.from("agents").select("project_id,enabled").eq("id",p.data.agent_id).eq("owner_id",user.id).maybeSingle();
+  if(!agent||agent.project_id!==p.data.project_id)return failure("Agent của lịch phải thuộc đúng dự án này.");
+  if(!agent.enabled)return failure("Phải bật Agent trước khi lập lịch.");
+  const {error}=await db.from("automation_schedules").insert({...p.data,owner_id:user.id,enabled:true,next_run_at:new Date().toISOString()});
   if(error)return failure("Không tạo được lịch (có thể trùng tên trong dự án).");
   revalidatePath("/");return success("Đã bật lịch. Supabase Cron sẽ đưa công việc vào hàng đợi ở chu kỳ tiếp theo.");}catch(e){return failure(message(e))}
 }
@@ -214,9 +211,8 @@ export async function updateProjectWebsiteAction(projectId:string,raw:string):Pr
  if(!uuid.safeParse(projectId).success)return failure("Dự án không hợp lệ.");
  const trimmed=raw.trim();
  try{
-  const u=new URL(trimmed);
-  if(u.protocol!=="https:"||u.username||u.password||u.port||!u.hostname.includes(".")||trimmed.length>500)
-   return failure("Chỉ chấp nhận URL website HTTPS công khai, không có port.");
+  if(trimmed.length>500)return failure("URL website quá dài (tối đa 500 ký tự).");
+  const u=parsePublicHttpsUrl(trimmed);
   const {db,user}=await session();
   const {data,error}=await db.from("projects").update({website_url:u.toString(),updated_at:new Date().toISOString()}).eq("id",projectId).eq("owner_id",user.id).select("id").maybeSingle();
   if(error||!data)return failure("Không lưu được URL website.");
@@ -229,8 +225,9 @@ export async function seoAuditAction(projectId:string):Promise<Result>{
  if(!uuid.safeParse(projectId).success)return failure("Chọn dự án cần audit.");
  try{
   const {db,user}=await session();
-  const {data:project}=await db.from("projects").select("id,name,website_url").eq("owner_id",user.id).eq("id",projectId).maybeSingle();
-  if(!project?.website_url)return failure("Dự án chưa có website URL. Tạo dự án mới với địa chỉ HTTPS để audit.");
+  const {data:project}=await db.from("projects").select("id,name,status,website_url").eq("owner_id",user.id).eq("id",projectId).maybeSingle();
+  if(!project||project.status!=="active")return failure("Chỉ tạo SEO Audit trong dự án đang hoạt động.");
+  if(!project.website_url)return failure("Dự án chưa có website HTTPS để audit.");
   const report=await auditWebsite(project.website_url);
   const title=`SEO Audit: ${project.name}`.slice(0,180);
   const {error}=await db.from("content_assets").insert({owner_id:user.id,project_id:project.id,channel:"seo-audit",title,body:report,status:"draft"});
@@ -304,5 +301,18 @@ export async function updateDraftContentAction(assetId:string,rawText:string):Pr
   await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"content.draft_edited",target_table:"content_assets",target_id:assetId});
   revalidatePath("/");
   return success("Đã lưu bản nháp chỉnh sửa. Vẫn chờ duyệt trước khi chuyển bước.");
+ }catch(e){return failure(message(e))}
+}
+
+/** Manual stale-run recovery: no AI call and no external publishing. */
+export async function recoverStaleTaskAction(taskId:string):Promise<Result>{
+ if(!uuid.safeParse(taskId).success)return failure("ID nhiệm vụ không hợp lệ.");
+ try{
+  const {db}=await session();
+  const {data,error}=await db.rpc("recover_stale_task",{p_task_id:taskId});
+  if(error)return failure("Chưa có cơ chế khôi phục trong database. Kiểm tra migration 009.");
+  if(data!==true)return failure("Nhiệm vụ chưa kẹt quá 15 phút, đã được xử lý hoặc không thuộc tài khoản này.");
+  revalidatePath("/");
+  return success("Đã khôi phục nhiệm vụ an toàn: nếu có bản nháp, tiếp tục duyệt; nếu chưa có, có thể chạy lại AI.");
  }catch(e){return failure(message(e))}
 }

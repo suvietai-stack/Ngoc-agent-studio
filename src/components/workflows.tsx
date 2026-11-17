@@ -40,6 +40,7 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
   id,steps:steps.sort((a,b)=>(a.workflow_step||0)-(b.workflow_step||0))
  })).sort((a,b)=>String(b.steps[0]?.created_at||"").localeCompare(String(a.steps[0]?.created_at||"")));
  const projectNames=new Map(initial.projects.map(p=>[p.id,p.name]));
+ const activeProject=initial.projects.some(p=>p.id===selectedProject&&p.status==="active");
 
  function execute(fn:()=>Promise<Result>,clearTopic=false){
   start(async()=>{
@@ -66,7 +67,7 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
     <input value={topic} onChange={e=>setTopic(e.target.value)} minLength={8} maxLength={140}
      placeholder="Ví dụ: Bộ ấm chén quà tặng doanh nghiệp" required/>
    </label>
-   <button className="primary" type="submit" disabled={pending||!selectedProject||topic.trim().length<8}>
+   <button className="primary" type="submit" disabled={pending||!selectedProject||!activeProject||topic.trim().length<8}>
     <Plus size={15}/>{pending?"Đang tạo...":"Tạo workflow"}
    </button>
   </form>
@@ -88,7 +89,7 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
        <div className="workflow-step-main"><b>{task.title?.split(" · ")[0]||"Agent"}</b>
         <small>{statusLabel(task,approved)}</small></div>
        {!unlocked?<span className="workflow-locked"><LockKeyhole size={13}/> Đợi duyệt bước trước</span>:
-        runnable?<button type="button" className="ops-outline" disabled={pending||!aiReady} title={!aiReady?"Chưa cấu hình OPENAI_API_KEY":"Chạy AI cho bước này"} onClick={()=>execute(()=>runTaskAction(task.id))}><Play size={13}/> Chạy AI</button>:
+        runnable?<button type="button" className="ops-outline" disabled={pending||!aiReady||!activeProject} title={!activeProject?"Dự án đang tạm dừng hoặc lưu trữ":!aiReady?"Chưa xác minh OpenAI cho dự án":"Chạy AI cho bước này"} onClick={()=>execute(()=>runTaskAction(task.id))}><Play size={13}/> Chạy AI</button>:
         <span className={finished?"chip on":"chip"}>{finished?"Đã duyệt":task.status==="running"?"Đang chạy":"Xem trong Nội dung"}</span>}
       </div>;
      })}</div>

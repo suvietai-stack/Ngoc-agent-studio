@@ -55,7 +55,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
   {showForm&&<section className="panel"><h3>Thiết lập lịch mới</h3><form className="form-stack" onSubmit={scheduleSubmit}>
     <label>Dự án<select name="project_id" value={selectedProject} onChange={e=>setSelected(e.target.value)} required>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
     <label>Tên công việc<input name="title" required minLength={4} maxLength={180} placeholder="Ví dụ: Kiểm tra kế hoạch social mỗi ngày"/></label>
-    <label>Agent phụ trách<select name="agent_id"><option value="">Để trống</option>{initial.agents.filter(a=>a.project_id===selectedProject&&a.enabled).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+    <label>Agent phụ trách<select name="agent_id" required><option value="">Chọn Agent bắt buộc</option>{initial.agents.filter(a=>a.project_id===selectedProject&&a.enabled).map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
     <label>Yêu cầu<textarea name="brief" maxLength={5000} rows={3} placeholder="Mô tả nội dung cần sinh theo lịch"/></label>
     <label>Tần suất<select name="frequency"><option value="daily">Hằng ngày</option><option value="weekly">Hằng tuần</option></select></label>
     <div className="ops-inline"><button className="primary" disabled={pending||!selectedProject} type="submit">Lưu và bật lịch</button><button className="ops-outline" type="button" onClick={()=>setShowForm(false)}>Hủy</button></div>

@@ -62,10 +62,10 @@ export async function executeNextAutoDraft():Promise<Outcome>{
    if(!asset?.body)continue;
    previousContent=String(asset.body).slice(0,6500);
   }
-  const {data:agents}=task.agent_id?
-   await db.from("agents").select("*").eq("id",task.agent_id).eq("owner_id",owner).eq("enabled",true):
-   await db.from("agents").select("*").eq("owner_id",owner).eq("enabled",true).eq("project_id",task.project_id).limit(100);
-  const agent=(agents||[]).find(a=>a.project_id===task.project_id);
+  // Never choose an arbitrary Agent when the schedule omitted an assignment.
+  if(!task.agent_id)continue;
+  const {data:agent}=await db.from("agents").select("*")
+   .eq("id",task.agent_id).eq("owner_id",owner).eq("enabled",true).maybeSingle();
   if(!agent||agent.project_id!==task.project_id)continue;
   const key=await getOpenAIKey(db,owner,task.project_id);
   if(!key)continue;

@@ -43,20 +43,20 @@ On failure: `running` → `failed`, review errors and retry where appropriate.
 | Workflow SEO → Content → Social | Yes | Upstream content approval required |
 | Schedules & queue | Yes | Supabase Cron creates tasks hourly |
 | Optional AI auto-draft worker | Yes, off by default | Vercel server credentials + explicit per-project enable |
-| Knowledge | Create/edit/delete | Project-specific and shared knowledge |
+| Knowledge | Create/edit/delete | Strictly per-project; no shared knowledge across projects |
 | Content & reports | Review/edit/copy/approve | No external publication |
 | Đốm AI | Chat with project context | API key required |
 | API connections | OpenAI and WordPress | Server-encrypted key; manual test |
-| Google Search Console / GA4 | Placeholder | Official OAuth and data scope needed |
-| Meta Facebook / Instagram | Placeholder | Official OAuth and review required |
+| Google Search Console / GA4 / Drive / Google Ads | OAuth setup & per-project token verification | User must register Google OAuth app, enable APIs and grant consent; reports/sync not yet implemented |
+| Meta Facebook / Instagram | OAuth setup & per-project token verification | Meta App credentials, permissions and possibly App Review required; no posting |
 | Reporting & billing | Internal task logs | Real API analytics and cost ledger pending |
 
 ## 5. External API contracts
 
-- OpenAI: API key per project or server fallback, text generation only, no external publishing.
+- OpenAI: verified encrypted API key for the selected project only, text generation only, no external publishing.
 - WordPress: Application Password stored encrypted per project. Connection check uses the read-only `/wp-json/wp/v2/users/me` endpoint. No post-writing endpoint is enabled.
-- Google Search Console / GA4 / Drive: OAuth consent, scoped callback, encrypted token refresh and account selection must be built and reviewed before activation.
-- Meta Pages / Instagram: official OAuth, page scope validation and a second publish approval gate; never use unofficial tokens.
+- Google Search Console / GA4 / Drive / Google Ads: OAuth consent and scoped callback are implemented; per-project encrypted tokens and provider connection checks are implemented. Account selection, reporting queries and scheduled data sync are not yet implemented.
+- Meta Pages / Instagram: OAuth setup, page scope checks and token storage are implemented; publishing and a second publish approval gate are not implemented.
 - Do not claim an integration is connected until a real verification succeeds.
 
 ## 6. Release validation checklist
@@ -97,3 +97,12 @@ These remaining items must be verified against the real provider accounts and pe
 - Credentials in the project vault take priority over optional Vercel environment credentials. Google Ads developer token can be entered in the Google form.
 - Changing a project's OAuth app credentials deletes old provider tokens/status for that project, requiring re-consent. It does not touch other projects.
 - Configure Google/Meta authorized callback URL `https://ngoc-agent-studio.vercel.app/api/integrations/oauth/callback` before clicking Connect; OAuth app registration and provider App Review cannot be automated without owner access.
+
+## Release checks and security hardening
+
+- Vercel's build invokes `npm test` **before** Next.js compilation. This provides a test gate when GitHub Actions runners cannot start; an unusable GitHub job is not treated as a passing check.
+- Migration 009 implements an immutable approval guard on content and tasks at PostgreSQL level. `approve_content_asset` is owner-checked SECURITY DEFINER because the authenticated role is not allowed to update the approval status column directly. Unapproved drafts alone remain editable by owner.
+- `recover_stale_task` only runs on owner-owned `running` tasks older than 15 minutes; it reuses any saved draft and never calls OpenAI.
+- Task and project website inputs use the same HTTPS-only, no-literal-IP URL parser. WordPress connection testing provides provider HTTP status diagnostics without revealing credentials.
+- Server-side tab queries load deterministic 200-row pages up to 2,000 records per table and explicitly warn when the cap is hit. This is a safety cap, **not full unlimited pagination**.
+- The owner still needs to run a real authenticated Agent draft / approval integration test. No automatic external publication is enabled.
