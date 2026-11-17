@@ -112,6 +112,9 @@ export function parseAuditV2(value){
  try{
   const r=JSON.parse(value);
   if(r?.schema!=="ngoc.seo.audit.v2"||!r?.summary||!Array.isArray(r.pages)||!Array.isArray(r.failures)||!r.scope||r.pages.length>50)return null;
+  if(typeof r.scope.root!=="string"||typeof r.checkedAt!=="string"||typeof r.summary.scanned!=="number"||!r.summary.severity||!Array.isArray(r.summary.issues)||!r.summary.internal||!r.summary.kinds)return null;
+  try{const u=new URL(r.scope.root);if(u.protocol!=="https:"||!u.hostname)return null;}catch{return null;}
+  if(r.pages.some(p=>!p||typeof p.url!=="string"||!Array.isArray(p.issues)))return null;
   return r;
  }catch{return null;}
 }
