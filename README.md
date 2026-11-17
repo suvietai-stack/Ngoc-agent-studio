@@ -79,3 +79,7 @@ Supabase migrations are in `supabase/migrations`. Deploy only against the dedica
 - Project URLs must use public HTTPS with no literal IP or custom port; WordPress connection failures include safe HTTP diagnostics.
 - Each data source is paged in 200-row steps. A warning appears after 2,000 records; unlimited server-side pagination is a later performance enhancement.
 - Vercel's `npm run build` runs Node tests before Next.js compilation. Do not confuse a Vercel build PASS with a live provider OAuth or manual Agent end-to-end test.
+
+## Project-first navigation
+
+After authentication, the owner **always** lands on the project selection screen at `/` (even with one project). No workspace records load until an owned project is explicitly chosen. Clicking a card opens `/?project=<uuid>`; direct links for a module include `&tab=tasks` or `&tab=integrations`. The workspace displays **only the selected project's** agents, tasks, knowledge, API connection metadata, history, automation schedules and content; project changes return to the project picker using **Chuyển dự án**. Invalid/foreign project identifiers never fall back to another project's data. Project creation happens in the picker and opens the new project immediately. No global all-project data view remains.

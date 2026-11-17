@@ -7,9 +7,9 @@ import type {Row} from "@/lib/types";
 import {createProjectAction,signOutAction} from "@/app/actions";
 import {projectWorkspaceHref} from "@/lib/project-entry.mjs";
 
-export function ProjectGate({projects,email,requestedTab,invalidProject=false,truncated=false}:{projects:Row[];email:string;requestedTab:string|null;invalidProject?:boolean;truncated?:boolean}){
+export function ProjectGate({projects,email,requestedTab,invalidProject=false,truncated=false,initialCreate=false}:{projects:Row[];email:string;requestedTab:string|null;invalidProject?:boolean;truncated?:boolean;initialCreate?:boolean}){
  const router=useRouter();
- const [creating,setCreating]=useState(false);
+ const [creating,setCreating]=useState(initialCreate);
  const [pending,start]=useTransition();
  const [notice,setNotice]=useState("");
  function create(e:React.FormEvent<HTMLFormElement>){
@@ -19,7 +19,7 @@ export function ProjectGate({projects,email,requestedTab,invalidProject=false,tr
    try{
     const res=await createProjectAction(data);
     if(!res.ok){setNotice(res.message);return;}
-    if(res.projectId){router.push(projectWorkspaceHref(res.projectId,requestedTab));router.refresh();}
+    if(res.projectId){router.push(projectWorkspaceHref(res.projectId,requestedTab));}
     else{setNotice("Đã tạo dự án. Chọn dự án từ danh sách để tiếp tục.");router.refresh();}
    }catch{setNotice("Không tạo được dự án. Kiểm tra kết nối và thử lại.");}
   });

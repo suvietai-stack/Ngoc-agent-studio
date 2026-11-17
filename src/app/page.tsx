@@ -12,7 +12,7 @@ import {Setup} from "@/components/setup";
 import type {WorkspaceData,Row} from "@/lib/types";
 
 export const dynamic="force-dynamic";
-export default async function Home({searchParams}:{searchParams:Promise<{project?:string|string[];tab?:string|string[]}>}){
+export default async function Home({searchParams}:{searchParams:Promise<{project?:string|string[];tab?:string|string[];new?:string|string[]}>}){
  if(!hasDatabaseConfig())return <Setup/>;
  const db=await createClient();
  const {data:{user}}=await db.auth.getUser();
@@ -35,7 +35,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{project
  }
  const selectedProject=projectFromOwnedList(projects,requestedProject);
  if(!selectedProject)return <ProjectGate projects={projects} email={user.email||"Cá nhân"}
-   requestedTab={requestedTab} invalidProject={Boolean(requestedProject)} truncated={projectsTruncated}/>;
+   requestedTab={requestedTab} invalidProject={Boolean(requestedProject)} truncated={projectsTruncated} initialCreate={requested.new==="1"}/>;
  // The server retrieves ONLY rows assigned to the chosen project. No cross-project
  // agent/content/knowledge/API connection rows reach client components.
  const sources=["agents","tasks","knowledge_items","integrations","task_runs","automation_schedules","content_assets","dom_messages"] as const;
