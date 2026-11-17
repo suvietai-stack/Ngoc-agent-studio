@@ -15,6 +15,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
  const projectMap=new Map(projects.map(p=>[p.id,p.name]));
  const schedules=initial.automations.filter(s=>filter==="all"||s.project_id===filter);
  const assets=initial.content.filter(a=>filter==="all"||a.project_id===filter);
+ const chatMessages=initial.messages.filter(m=>!selectedProject||m.project_id===selectedProject);
  function call(fn:()=>Promise<Result>){start(async()=>{try{const r=await fn();setNotice(r.message);router.refresh()}catch{setNotice("Không thể thực hiện. Kiểm tra kết nối.")}})}
  function scheduleSubmit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const data=new FormData(e.currentTarget);call(async()=>{const r=await createScheduleAction(data);if(r.ok)setShowForm(false);return r})}
  function ask(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!question.trim())return;const content=question;start(async()=>{setNotice("");const r=await askDomAction(content,selectedProject||undefined);if(r.ok){setAnswer(r.answer||"");setQuestion("");router.refresh()}else setNotice(r.message)})}
@@ -23,10 +24,10 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
  {tab==="dom"&&<>
   <section className="ops-hero"><div className="ops-icon"><Sparkles size={26}/></div><div><p className="eyebrow">ĐỐM AI · TRỢ LÝ ĐIỀU PHỐI</p><h2>Hỏi Đốm bất cứ điều gì về chiến dịch.</h2><p>Đốm sử dụng dự án, nhiệm vụ và kho tri thức của bạn để tư vấn. Không tự đăng hoặc thay đổi tài khoản bên ngoài.</p></div></section>
   {!aiReady&&<div className="ops-warning"><b>Chưa bật bộ não AI</b><p>Thêm API key trong tab Kết nối của dự án hoặc cấu hình <code>OPENAI_API_KEY</code> trên máy chủ. Lịch tự động vẫn tạo hàng đợi công việc bình thường.</p></div>}
-  <section className="panel ops-chat"><h3>Hội thoại với Đốm</h3><div className="ops-messages">
-   {initial.messages.length===0&&!answer&&<div className="ops-placeholder"><Bot size={30}/><b>Đốm đang sẵn sàng nhận hướng dẫn</b><span>Gợi ý: “Lập kế hoạch SEO và social 7 ngày cho Sứ Việt.”</span></div>}
-   {initial.messages.slice(-12).map(m=><div key={m.id} className={"ops-bubble "+(m.role==="user"?"self":"assistant")}><small>{m.role==="user"?"Bạn":"Đốm AI"}</small><p>{m.content}</p></div>)}
-   {answer&&initial.messages.length===0&&<div className="ops-bubble assistant"><small>Đốm AI</small><p>{answer}</p></div>}
+  <section className="panel ops-chat"><div className="ops-toolbar"><h3>Hội thoại với Đốm</h3><select aria-label="Chọn dự án hội thoại" value={selectedProject} onChange={e=>{setSelected(e.target.value);setAnswer("")}}>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div><div className="ops-messages">
+   {chatMessages.length===0&&!answer&&<div className="ops-placeholder"><Bot size={30}/><b>Đốm đang sẵn sàng nhận hướng dẫn</b><span>Gợi ý: “Lập kế hoạch SEO và social 7 ngày cho Sứ Việt.”</span></div>}
+   {chatMessages.slice(-12).map(m=><div key={m.id} className={"ops-bubble "+(m.role==="user"?"self":"assistant")}><small>{m.role==="user"?"Bạn":"Đốm AI"}</small><p>{m.content}</p></div>)}
+   {answer&&chatMessages.length===0&&<div className="ops-bubble assistant"><small>Đốm AI</small><p>{answer}</p></div>}
   </div><form className="ops-composer" onSubmit={ask}><textarea value={question} onChange={e=>setQuestion(e.target.value)} rows={3} maxLength={4000} required placeholder="Hỏi Đốm về SEO, kế hoạch marketing, công việc..." disabled={!aiReady||pending}/><button type="submit" className="primary" disabled={!aiReady||pending||question.trim().length<3}><Send size={16}/>{pending?"Đang nghĩ...":"Gửi Đốm"}</button></form></section>
  </>}
  {tab==="automations"&&<>
