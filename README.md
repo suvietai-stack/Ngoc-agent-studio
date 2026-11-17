@@ -1,88 +1,73 @@
 # Ngọc Agent Studio
 
-Private personal AI Agent workspace for SEO, Marketing and Social Media projects.
+Private Next.js 16 / React 19 Agent workspace for SEO, Content, Marketing and Social Media.
 
-## Technology
-- Source control: GitHub private repository `suvietai-stack/Ngoc-agent-studio`.
-- Deployment: Vercel builds code from GitHub (Git integration not yet authorized).
-- App: Next.js 16 App Router, React 19, TypeScript, custom responsive CSS.
-- Auth/data: NEW Supabase PostgreSQL project, per-owner Row-Level Security.
+## Deploy & data
 
-## Functionality in v0.1
-When a separate database is configured: sign-in, add/list projects, create/enable agent definitions, create tasks, approve tasks, add/read knowledge, show live counts. Tools/integrations are placeholders clearly marked disconnected; no fake AI execution.
+- **Private GitHub source:** `suvietai-stack/Ngoc-agent-studio`; changes are reviewed in pull requests.
+- **Existing Vercel project:** `ngoc-agent-studio`, automatically deployed from the `main` branch.
+- **Production:** https://ngoc-agent-studio.vercel.app
+- **Dedicated Supabase project:** `ngoc-agent-studio-db` (`zvbwknltooymuenpvptr`). Never migrate or modify **Base Sứ Việt** for this app.
+- **Security:** Supabase Auth + owner-only access, RLS and per-project foreign key constraints. Confidential API credentials are encrypted on the server using AES-256-GCM.
+- **Runtime:** Node.js 22.x, the same major version as GitHub CI.
 
-**Not yet implemented:** calling an AI model, scheduled workflows, connected SEO APIs, WordPress publishing, Facebook posting, real usage analytics. No external publish/send/delete without a separate approval gate.
+## Modules and actual functionality
 
-## First-time setup
-1. **Never use base-suviet**. Create a new Supabase project for Ngọc Agent Studio.
-2. Run `supabase/migrations/202611170001_initial.sql` on that new project.
-3. Turn OFF public signups; create the owner user through Supabase Admin.
-4. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_SITE_URL` as Vercel environment variables. Never commit secret keys.
-5. `npm install && npm run typecheck && npm run build` to validate.
-6. Connect GitHub to Vercel and review preview deployment before releasing to production.
+| Module | Available | Not yet verified or not implemented |
+| --- | --- | --- |
+| Projects / Agents / Tasks / Knowledge | Create, update and manage within project; isolation enforced by database | Browser interaction tests require the authenticated owner |
+| AI (OpenAI) | Per-project key entry and verification, manual draft generation, Đốm AI | Real task end-to-end needs an actual API request; incurs provider charges |
+| Content / workflows | Draft edit, approval; SEO → Content → Social approval chain | No automatic public posting |
+| SEO audit | Live HTML audit of the configured HTTPS site | Not Google Search Console data |
+| Cron | Supabase hourly queue generation | AI worker disabled until separately configured and opted in |
+| WordPress | Application Password entry and read-only connection verification | Writing/publishing posts not implemented |
+| Google (GSC, GA4, Drive, Ads) | In-app encrypted OAuth Client config, consent and provider read-access verification | No analytics ingestion/sync, Ads mutations or report dashboards |
+| Meta (Facebook, Instagram) | In-app encrypted OAuth App config, consent and provider asset verification | No posts, messages or external mutations |
+| Operational reporting | Internal tasks, run logs and approval statuses | No unified Google/Meta metrics or billing ledger |
 
-## Important rules
-- No Lovable, no code reuse of Base Sứ Việt.
-- One private repo is source of truth, GPT edits GitHub, Vercel deploys from Git.
-- Keep data separated per project and signed-in owner, record approvals, no silent external actions.
-- AI providers need backend-only secrets. Frontend publishable Supabase keys are the only public values.
+**Provider connection verification is not a full integration test.** A key may authenticate without sufficient usage balance or service-specific permissions.
 
+## Owner setup
 
+1. Sign in at https://ngoc-agent-studio.vercel.app. Only the `STUDIO_OWNER_UID` account can open the workspace.
+2. Select the project from the top navigation; each project owns its Agent, knowledge, keys, tasks, schedules, content and chat.
+3. On the **Kết nối** tab, enter a per-project OpenAI key and press **Kiểm tra**.
+4. For Google/Meta, create an OAuth web application in the official provider console, then enter Client ID and Client Secret in **Kết nối** (encrypted in the project). Register this callback with the provider:
 
-## Agent Studio v2 — Đốm AI & tự động hóa (2026-11-17)
+   `https://ngoc-agent-studio.vercel.app/api/integrations/oauth/callback`
 
-- Đăng nhập Supabase Auth (không mở đăng ký công khai), phân quyền Row Level Security theo owner.
-- Starter workspace: Sứ Việt - SEO & Social, 6 Agent, 3 lịch mẫu và các công việc mẫu.
-- Supabase Cron (`ngoc-agent-studio-queue`) chạy mỗi giờ, tự thêm việc **draft** theo lịch daily/weekly. Cron không tự xuất bản.
-- Tạo chiến dịch 4 công việc SEO/Content/Social/Marketing bằng một nút bấm.
-- Chạy Agent với OpenAI Responses API, ghi task_runs, lưu nội dung draft trong content_assets, phê duyệt thủ công. Không dùng Service Role trong trình duyệt.
-- Đốm AI trả lời trong tab riêng, có ngữ cảnh từ projects, tasks và knowledge_items; lịch sử lưu tại dom_messages.
-- SEO Audit quét trực tiếp HTML website HTTPS được khai báo, kiểm tra title/description/H1/canonical/robots/OG. Không thay thế Search Console hay Analytics.
-- **Tự đăng WordPress/Facebook/Instagram, OAuth Analytics/Search Console, truy xuất dữ liệu Ads, AI tự chạy không cần người khởi phát: CHƯA triển khai**. Cần kết nối quyền chính thức, quyền ghi và triển khai bộ điều phối nền an toàn.
+5. Select **Kết nối** for each provider to consent and verify the account/asset. Google Ads also needs a Developer Token. Some Meta permissions require App Review.
+6. For a manual end-to-end test, open **Công việc**, run a draft and review it in **Nội dung & báo cáo**. No external publishing is performed.
 
-### Bật tính năng AI
+### Direct links (iPad/mobile/desktop)
 
-Trong Vercel Project → Settings → Environment Variables, thêm **server-side secret**:
+- [Kết nối](https://ngoc-agent-studio.vercel.app/?tab=integrations)
+- [Công việc](https://ngoc-agent-studio.vercel.app/?tab=tasks)
+- [Đội ngũ AI](https://ngoc-agent-studio.vercel.app/?tab=agents)
+- [Nội dung](https://ngoc-agent-studio.vercel.app/?tab=content)
+- [Tự động hóa](https://ngoc-agent-studio.vercel.app/?tab=automations)
+
+## Environment variables
+
+Always server-side (no `NEXT_PUBLIC_` prefix for secrets):
+
+- Required: `INTEGRATION_ENCRYPTION_KEY` (32-byte Base64 AES key), `STUDIO_OWNER_UID`.
+- Required public Supabase configuration: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`.
+- Optional fallback for Google OAuth: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`.
+- Optional fallback for Meta OAuth: `META_APP_ID`, `META_APP_SECRET`.
+- Optional for Google Ads: `GOOGLE_ADS_DEVELOPER_TOKEN`.
+- Optional opt-in auto-run worker: `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `AUTO_AGENT_RUNNER_ENABLED=true`, optionally `AUTO_AI_DAILY_LIMIT`.
+- OpenAI is configured by an encrypted **per-project** key in the app, not a shared server fallback.
+
+Keep tokens and service role credentials out of GitHub, chat, browser local storage and public environment values. Rotating `INTEGRATION_ENCRYPTION_KEY` requires a re-encryption migration.
+
+## Testing
+
+```bash
+npm install
+npm test
+npm run typecheck
+npm run build
 ```
-OPENAI_API_KEY=<set in Vercel dashboard; do not commit>
-```
-Áp dụng cho production và redeploy. Không đặt key với tiền tố `NEXT_PUBLIC_`.
-Model mặc định `gpt-4.1-mini`. Các nút `Chạy AI` và chat Đốm chỉ hoạt động khi biến này có giá trị. OpenAI API có thể phát sinh phí; hệ thống không tự gọi API khi chưa cấu hình key.
 
-### Migrations
-
-- `supabase/migrations/202611170001_initial.sql`
-- `supabase/migrations/202611170002_automation.sql`
-
-Chỉ chạy migrations ở Supabase project `ngoc-agent-studio-db`. Tuyệt đối không chạy trên Base Sứ Việt. Cron hoạt động trong Postgres, không cần Vercel Cron/Service Role để thêm việc.
-
-## Agent Workflow v3 — Phê duyệt nối bước (2026-11-17)
-
-- Tạo chuỗi 3 công việc thực tế **SEO → Content → Social** trong tab **Tự động hóa**.
-- Mỗi bước dùng Agent đang bật phù hợp dự án hoặc dùng chung, không thay thế bằng Agent ngẫu nhiên.
-- Bước 2/3 bị chặn phía máy chủ cho đến khi bản nháp của bước ngay trước được **duyệt tại tab Nội dung**.
-- Khi chạy bước sau, bản nháp đã duyệt của bước trước được đưa vào ngữ cảnh AI, tối đa 6.500 ký tự.
-- Mọi lần chạy vẫn yêu cầu người dùng nhấn **Chạy AI**. Không tự đăng, gửi, xóa dữ liệu hay tự chạy API ngầm.
-- Migration cần áp dụng **chỉ trên** Supabase `ngoc-agent-studio-db`: `supabase/migrations/202611170003_agent_workflows.sql`.
-- Luồng phát hành: nhánh tính năng → kiểm tra preview Vercel → PR về `main` → production.
-
-
-## v4 — Trung tâm API và an toàn Agent
-- Kết nối OpenAI và WordPress ngay trong tab **Kết nối**, theo từng dự án.
-- Secrets mã hóa AES-256-GCM trước khi lưu vào bảng \`integration_secrets\`; không có API đọc plaintext, không dùng \`NEXT_PUBLIC_\` cho khóa.
-- Server environment variable bắt buộc để lưu khóa: \`INTEGRATION_ENCRYPTION_KEY\` = Base64 của 32 byte ngẫu nhiên (có thể tạo trên máy quản trị bằng \`openssl rand -base64 32\`).
-- Chạy migration \`supabase/migrations/202611170004_api_connections.sql\` trên **ngoc-agent-studio-db** trước khi triển khai UI mới.
-- Sau khi lưu, nhấn **Kiểm tra** để xác minh OpenAI models endpoint hoặc WordPress user endpoint. Đây chỉ là request xác minh, không đăng bài.
-- OAuth Google/Meta cần thêm app credentials, consent screen và callback riêng trước khi bật; không dán access token vào các form chưa hỗ trợ.
-- AI run có thể dùng OpenAI API key riêng theo dự án hoặc \`OPENAI_API_KEY\` máy chủ. Đốm lấy ngữ cảnh theo dự án; không được mượn Agent của dự án khác.
-- Chỉ push branch tính năng, chạy typecheck/build, kiểm tra Vercel Preview rồi mới merge vào \`main\`. Không triển khai migration lên Base Sứ Việt.
-
-
-## v5 — AI draft automation (opt-in, scheduled)
-- Migration 005 adds projects.auto_run_enabled, default **false** for all projects.
-- Vercel Cron runs once daily at 02:00 UTC (Hobby plan). Supabase Cron continues to queue draft tasks hourly.
-- Server-only environment: SUPABASE_SERVICE_ROLE_KEY from **ngoc-agent-studio-db**, STUDIO_OWNER_UID, CRON_SECRET, AUTO_AGENT_RUNNER_ENABLED=true. Never expose service role or cron secret in NEXT_PUBLIC_.
-- The worker refuses any database host other than zvbwknltooymuenpvptr.supabase.co.
-- Enable automatic drafting per project from Tự động hóa after configuring keys/migrations; limit AUTO_AI_DAILY_LIMIT (default 3, max 20) runs/day, skip blocked workflow stages and jobs with 3 failed executions.
-- Auto jobs create **drafts only**, with mandatory human approval. No publishing/sending/deleting.
-- Draft content is editable before approval; approved outputs are immutable.
+Supabase migrations are in `supabase/migrations`. Deploy only against the dedicated Ngọc database. See `docs/OPERATING_MODEL.md` for the operational safety model and approval gates.

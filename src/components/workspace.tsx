@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState,useTransition} from "react";
 import {useRouter} from "next/navigation";
+import {resolveWorkspaceLink} from "@/lib/workspace-route.mjs";
 import type {WorkspaceData,Row} from "@/lib/types";
 import {StudioOperations} from "@/components/operations";
 import {APIConnections} from "@/components/api-connections";
@@ -21,15 +22,15 @@ function Chip({children,active=false}:{children:React.ReactNode;active?:boolean}
 export function Workspace({initial,email,aiConfigured,encryptionConfigured,envOpenAI,runnerConfigured,oauthReady}:{initial:WorkspaceData;email:string;aiConfigured:boolean;encryptionConfigured:boolean;envOpenAI:boolean;runnerConfigured:boolean;oauthReady:{google:boolean;meta:boolean;ads:boolean}}){
  const router=useRouter(),[tab,setTab]=useState<Tab>("home"),[filter,setFilter]=useState(initial.projects[0]?.id||"all"),[modal,setModal]=useState<null|"project"|"agent"|"task"|"knowledge">(null),[modalProject,setModalProject]=useState(""),[notice,setNotice]=useState(""),[template,setTemplate]=useState(0),[nav,setNav]=useState(false),[pending,start]=useTransition();
  useEffect(()=>{
-  const query=new URLSearchParams(window.location.search);
-  if(query.get("tab")!=="integrations")return;
-  const project=query.get("project");
-  if(project&&initial.projects.some(p=>p.id===project))setFilter(project);
-  setTab("integrations");
-  const oauth=query.get("oauth");
-  if(oauth==="connected")setNotice("Đã xác minh kết nối OAuth thành công. Xem trạng thái trong tab Kết nối.");
-  else if(oauth==="needs_access")setNotice("Đã cấp quyền OAuth nhưng chưa tìm thấy tài sản hoặc API chưa cho phép đọc. Bấm Kiểm tra để xem chi tiết.");
-  else if(oauth==="failed")setNotice("Kết nối OAuth không hoàn tất. Kiểm tra quyền ứng dụng, cấu hình callback và thử lại.");
+  const link=resolveWorkspaceLink(window.location.search,tabs.map(([id])=>id),initial.projects.map(p=>p.id));
+  if(!link.tab&&!link.project)return;
+  if(link.project)setFilter(link.project);
+  if(link.tab)setTab(link.tab as Tab);
+  if(link.tab==="integrations"){
+   if(link.oauth==="connected")setNotice("Đã xác minh kết nối OAuth thành công. Xem trạng thái trong tab Kết nối.");
+   else if(link.oauth==="needs_access")setNotice("Đã cấp quyền OAuth nhưng chưa tìm thấy tài sản hoặc API chưa cho phép đọc. Bấm Kiểm tra để xem chi tiết.");
+   else if(link.oauth==="failed")setNotice("Kết nối OAuth không hoàn tất. Kiểm tra quyền ứng dụng, cấu hình callback và thử lại.");
+  }
   window.history.replaceState(null,"",window.location.pathname);
  },[initial.projects]);
  const names=new Map(initial.projects.map(p=>[p.id,p.name]));
