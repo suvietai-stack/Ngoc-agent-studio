@@ -65,3 +65,14 @@ Chỉ chạy migrations ở Supabase project `ngoc-agent-studio-db`. Tuyệt đ�
 - Mọi lần chạy vẫn yêu cầu người dùng nhấn **Chạy AI**. Không tự đăng, gửi, xóa dữ liệu hay tự chạy API ngầm.
 - Migration cần áp dụng **chỉ trên** Supabase `ngoc-agent-studio-db`: `supabase/migrations/202611170003_agent_workflows.sql`.
 - Luồng phát hành: nhánh tính năng → kiểm tra preview Vercel → PR về `main` → production.
+
+
+## v4 — Trung tâm API và an toàn Agent
+- Kết nối OpenAI và WordPress ngay trong tab **Kết nối**, theo từng dự án.
+- Secrets mã hóa AES-256-GCM trước khi lưu vào bảng \`integration_secrets\`; không có API đọc plaintext, không dùng \`NEXT_PUBLIC_\` cho khóa.
+- Server environment variable bắt buộc để lưu khóa: \`INTEGRATION_ENCRYPTION_KEY\` = Base64 của 32 byte ngẫu nhiên (có thể tạo trên máy quản trị bằng \`openssl rand -base64 32\`).
+- Chạy migration \`supabase/migrations/202611170004_api_connections.sql\` trên **ngoc-agent-studio-db** trước khi triển khai UI mới.
+- Sau khi lưu, nhấn **Kiểm tra** để xác minh OpenAI models endpoint hoặc WordPress user endpoint. Đây chỉ là request xác minh, không đăng bài.
+- OAuth Google/Meta cần thêm app credentials, consent screen và callback riêng trước khi bật; không dán access token vào các form chưa hỗ trợ.
+- AI run có thể dùng OpenAI API key riêng theo dự án hoặc \`OPENAI_API_KEY\` máy chủ. Đốm lấy ngữ cảnh theo dự án; không được mượn Agent của dự án khác.
+- Chỉ push branch tính năng, chạy typecheck/build, kiểm tra Vercel Preview rồi mới merge vào \`main\`. Không triển khai migration lên Base Sứ Việt.

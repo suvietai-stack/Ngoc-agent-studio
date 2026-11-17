@@ -2,7 +2,7 @@ import "server-only";
 import {lookup} from "node:dns/promises";
 import {isIP} from "node:net";
 
-function isPublicIP(ip:string):boolean{
+export function isPublicIP(ip:string):boolean{
  if(ip.includes(":")){const lower=ip.toLowerCase();return /^(2|3)[0-9a-f]{3}:/.test(lower)&&!lower.startsWith("2001:db8");}
  const n=ip.split(".").map(Number);
  if(n.length!==4||n.some(x=>!Number.isInteger(x)||x<0||x>255))return false;

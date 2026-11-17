@@ -6,8 +6,8 @@ type ModelResponse={output?:ResponseItem[];output_text?:string;error?:{message?:
 
 export const aiReady=()=>Boolean(process.env.OPENAI_API_KEY?.trim());
 
-export async function generateText(instructions:string,input:string,requestedModel?:string):Promise<{text:string;model:string}>{
- const key=process.env.OPENAI_API_KEY;
+export async function generateText(instructions:string,input:string,requestedModel?:string,overrideKey?:string):Promise<{text:string;model:string}>{
+ const key=overrideKey||process.env.OPENAI_API_KEY;
  if(!key)throw new Error("AI chưa kích hoạt: cần thêm OPENAI_API_KEY trong Vercel → Environment Variables và triển khai lại.");
  if(input.length>24000)throw new Error("Nội dung đầu vào quá dài.");
  const model=requestedModel&&/^gpt-[a-zA-Z0-9.-]{3,40}$/.test(requestedModel)?requestedModel:"gpt-4.1-mini";
