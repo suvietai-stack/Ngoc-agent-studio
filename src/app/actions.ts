@@ -36,7 +36,13 @@ export async function createTaskAction(form:FormData):Promise<Result>{
 }
 export async function approveTaskAction(id:string):Promise<Result>{
  if(!z.uuid().safeParse(id).success)return fail("ID nhiệm vụ không hợp lệ.");
- try{const {db}=await auth();const {data,error}=await db.rpc("approve_task",{p_task_id:id});if(error||data!==true)return fail("Không thể phê duyệt nhiệm vụ.");revalidatePath("/");return ok("Đã duyệt công việc. Nội dung cần duyệt riêng trước khi xuất bản.");}catch(e){return fail(err(e))}
+ try{const {db}=await auth();
+  const {data:asset}=await db.from("content_assets").select("id").eq("task_id",id).eq("status","approved").limit(1).maybeSingle();
+  if(!asset)return fail("Phải duyệt bản nháp tại tab Nội dung trước.");
+  const {data,error}=await db.rpc("approve_task",{p_task_id:id});
+  if(error||data!==true)return fail("Nhiệm vụ không còn ở trạng thái chờ duyệt.");
+  revalidatePath("/");return ok("Đã đồng bộ trạng thái nhiệm vụ sau khi duyệt nội dung.");
+ }catch(e){return fail(err(e))}
 }
 export async function createKnowledgeAction(form:FormData):Promise<Result>{
  const p=z.object({title:z.string().trim().min(2).max(180),content:z.string().trim().min(20).max(30000),project_id:z.union([z.uuid(),z.literal("")])}).safeParse({title:form.get("title"),content:form.get("content"),project_id:form.get("project_id")||""});
@@ -112,5 +118,32 @@ export async function updateAgentAction(id:string,form:FormData):Promise<Result>
   if(error||!data)return fail("Không cập nhật được Agent.");
   await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"agent.updated",target_table:"agents",target_id:id});
   revalidatePath("/");return ok("Đã cập nhật Agent.");
+ }catch(e){return fail(err(e))}
+}
+
+
+export async function updateTaskAction(id:string,form:FormData):Promise<Result>{
+ if(!z.uuid().safeParse(id).success)return fail("Công việc không hợp lệ.");
+ const p=z.object({title:z.string().trim().min(4).max(200),brief:z.string().trim().max(5000),
+  agent_id:z.union([z.uuid(),z.literal("")])}).safeParse({
+  title:form.get("title"),brief:form.get("brief")||"",agent_id:form.get("agent_id")||""
+ });
+ if(!p.success)return fail("Thông tin công việc không hợp lệ.");
+ try{
+  const {db,user}=await auth();
+  const {data:task}=await db.from("tasks").select("id,project_id,status,source")
+   .eq("id",id).eq("owner_id",user.id).maybeSingle();
+  if(!task||!["draft","failed"].includes(task.status)||task.source==="workflow")
+   return fail("Không được sửa nhiệm vụ đang chạy, đã duyệt hoặc thuộc chuỗi Agent.");
+  if(p.data.agent_id){
+   const {data:agent}=await db.from("agents").select("project_id,enabled").eq("id",p.data.agent_id).eq("owner_id",user.id).maybeSingle();
+   if(!agent||!agent.enabled||(agent.project_id&&agent.project_id!==task.project_id))return fail("Agent không hợp lệ cho dự án này.");
+  }
+  const {data,error}=await db.from("tasks").update({
+   title:p.data.title,brief:p.data.brief,agent_id:p.data.agent_id||null,status:"draft",updated_at:new Date().toISOString()
+  }).eq("id",id).eq("owner_id",user.id).in("status",["draft","failed"]).select("id").maybeSingle();
+  if(error||!data)return fail("Không cập nhật được công việc.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"task.updated",target_table:"tasks",target_id:id});
+  revalidatePath("/");return ok("Đã lưu công việc. Có thể chạy AI để tạo bản nháp.");
  }catch(e){return fail(err(e))}
 }

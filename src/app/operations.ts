@@ -175,7 +175,18 @@ export async function runScheduleNowAction(id:string):Promise<Result>{
 
 export async function approveContentAction(id:string):Promise<Result>{
  if(!uuid.safeParse(id).success)return failure("ID bản nháp không hợp lệ.");
- try{const {db,user}=await session();const {data,error}=await db.from("content_assets").update({status:"approved",updated_at:new Date().toISOString()}).eq("id",id).eq("owner_id",user.id).eq("status","draft").select("id").maybeSingle();if(error||!data)return failure("Bản nháp đã được duyệt hoặc không tồn tại.");revalidatePath("/");return success("Đã duyệt nội dung. Chưa xuất bản ra mạng xã hội/website.");}catch(e){return failure(message(e))}
+ try{const {db,user}=await session();
+  const {data,error}=await db.from("content_assets").update({status:"approved",updated_at:new Date().toISOString()})
+   .eq("id",id).eq("owner_id",user.id).eq("status","draft").select("id,task_id").maybeSingle();
+  if(error||!data)return failure("Bản nháp đã được duyệt hoặc không tồn tại.");
+  if(data.task_id){
+   const {error:taskError}=await db.from("tasks").update({status:"approved",updated_at:new Date().toISOString()})
+    .eq("id",data.task_id).eq("owner_id",user.id).eq("status","pending_approval");
+   if(taskError)return failure("Đã duyệt nội dung nhưng không đồng bộ được trạng thái nhiệm vụ.");
+  }
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"content.approved",target_table:"content_assets",target_id:id});
+  revalidatePath("/");return success("Đã duyệt nội dung. Agent bước tiếp theo được phép chạy; chưa xuất bản ra ngoài.");
+ }catch(e){return failure(message(e))}
 }
 
 export async function updateProjectWebsiteAction(projectId:string,raw:string):Promise<Result>{
