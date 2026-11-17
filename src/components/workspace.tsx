@@ -1,5 +1,5 @@
 "use client";
-import {useState,useTransition} from "react";
+import {useEffect,useState,useTransition} from "react";
 import {useRouter} from "next/navigation";
 import type {WorkspaceData,Row} from "@/lib/types";
 import {StudioOperations} from "@/components/operations";
@@ -18,8 +18,20 @@ const templates=[{name:"SEO Agent",purpose:"Phân tích SEO và đề xuất t�
 const fmt=(d?:string)=>d?new Date(d).toLocaleDateString("vi-VN"):"—";
 function Empty({title,desc,icon:Icon=FolderKanban}:{title:string;desc:string;icon?:React.ElementType}){return <div className="empty"><Icon size={32} strokeWidth={1.3}/><b>{title}</b><p>{desc}</p></div>}
 function Chip({children,active=false}:{children:React.ReactNode;active?:boolean}){return <span className={"chip "+(active?"on":"")}>{children}</span>}
-export function Workspace({initial,email,aiConfigured,encryptionConfigured,envOpenAI,runnerConfigured}:{initial:WorkspaceData;email:string;aiConfigured:boolean;encryptionConfigured:boolean;envOpenAI:boolean;runnerConfigured:boolean}){
+export function Workspace({initial,email,aiConfigured,encryptionConfigured,envOpenAI,runnerConfigured,oauthReady}:{initial:WorkspaceData;email:string;aiConfigured:boolean;encryptionConfigured:boolean;envOpenAI:boolean;runnerConfigured:boolean;oauthReady:{google:boolean;meta:boolean;ads:boolean}}){
  const router=useRouter(),[tab,setTab]=useState<Tab>("home"),[filter,setFilter]=useState(initial.projects[0]?.id||"all"),[modal,setModal]=useState<null|"project"|"agent"|"task"|"knowledge">(null),[modalProject,setModalProject]=useState(""),[notice,setNotice]=useState(""),[template,setTemplate]=useState(0),[nav,setNav]=useState(false),[pending,start]=useTransition();
+ useEffect(()=>{
+  const query=new URLSearchParams(window.location.search);
+  if(query.get("tab")!=="integrations")return;
+  const project=query.get("project");
+  if(project&&initial.projects.some(p=>p.id===project))setFilter(project);
+  setTab("integrations");
+  const oauth=query.get("oauth");
+  if(oauth==="connected")setNotice("Đã xác minh kết nối OAuth thành công. Xem trạng thái trong tab Kết nối.");
+  else if(oauth==="needs_access")setNotice("Đã cấp quyền OAuth nhưng chưa tìm thấy tài sản hoặc API chưa cho phép đọc. Bấm Kiểm tra để xem chi tiết.");
+  else if(oauth==="failed")setNotice("Kết nối OAuth không hoàn tất. Kiểm tra quyền ứng dụng, cấu hình callback và thử lại.");
+  window.history.replaceState(null,"",window.location.pathname);
+ },[initial.projects]);
  const names=new Map(initial.projects.map(p=>[p.id,p.name]));
  const list=(rows:Row[])=>rows.filter(x=>filter==="all"||x.id===filter||x.project_id===filter);
  const tasks=list(initial.tasks);
@@ -36,7 +48,7 @@ export function Workspace({initial,email,aiConfigured,encryptionConfigured,envOp
  {tab==="agents"&&<AgentManager initial={initial} filter={filter} onAdd={()=>setModal("agent")}/>}
  {tab==="tasks"&&<TaskManager initial={initial} filter={filter} connectedProjects={connectedProjects} onAdd={()=>setModal("task")} onOpenContent={()=>setTab("content")}/>}
  {tab==="knowledge"&&<KnowledgeManager initial={initial} filter={filter} onAdd={()=>setModal("knowledge")}/>}
- {tab==="integrations"&&<APIConnections initial={initial} filter={filter} encryptionConfigured={encryptionConfigured} envOpenAI={envOpenAI}/>}
+ {tab==="integrations"&&<APIConnections initial={initial} filter={filter} encryptionConfigured={encryptionConfigured} envOpenAI={envOpenAI} oauthReady={oauthReady}/>}
  {tab==="runs"&&<section className="panel"><h3>Lịch sử chạy ({activeRuns.length})</h3>{activeRuns.length===0?<Empty icon={Clock3} title="Chưa có lần chạy thực tế" desc="Khi nhấn Chạy AI, kết quả và lỗi được ghi tại đây."/>:<div className="list">{activeRuns.map(r=><div className="item" key={r.id}><div className="card-icon"><Clock3 size={19}/></div><div className="item-main"><b>{r.summary||r.error_message||r.state||"Lần chạy"}</b><small>{fmt(r.created_at)} · {r.model||"Agent"}</small>{r.output&&<details><summary>Xem kết quả</summary><pre className="ops-content">{r.output}</pre></details>}</div><Chip active={r.state==="completed"}>{r.state==="completed"?"Thành công":r.state==="failed"?"Thất bại":r.state==="running"?"Đang chạy":"Đang chờ"}</Chip></div>)}</div>}</section>}
  {(tab==="dom"||tab==="automations"||tab==="content")&&<StudioOperations tab={tab} initial={initial} filter={filter} aiReady={aiReadyForSelection} runnerConfigured={runnerConfigured}/> }{tab==="settings"&&<section className="panel"><h3>Thiết lập cá nhân</h3><div className="setting"><ShieldCheck size={23}/><span><b>Tài khoản</b><small>{email}</small></span><Chip active>Đăng nhập</Chip></div><div className="setting"><PlugZap size={23}/><span><b>AI Provider</b><small>{aiReadyForSelection?"Dự án đang chọn đã xác minh OpenAI":"Mở tab Kết nối để thêm và kiểm tra API key riêng cho dự án"}</small></span><Chip active={aiReadyForSelection}>{aiReadyForSelection?"Đã xác minh":"Chưa kết nối"}</Chip></div><div className="setting"><Bot size={23}/><span><b>Quy trình phê duyệt</b><small>Không xuất bản hoặc gửi nội dung mà chưa duyệt</small></span><Chip active>Được bật</Chip></div></section>}
  </div></div>
