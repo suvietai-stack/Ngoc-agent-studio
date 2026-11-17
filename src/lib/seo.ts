@@ -74,7 +74,7 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
   results.forEach((result,i)=>{
    const url=batch[i];
    if(result.status==="fulfilled"){
-    const page=inspectSeoHtml(result.value,url) as Inspected;
+    const page=inspectSeoHtml(result.value,url) as AuditPage;
     page.schemaTypes=jsonLdTypes(result.value);
     inspected.push(page);
     for(const link of page.links)accept(link);
