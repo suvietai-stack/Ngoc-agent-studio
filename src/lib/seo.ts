@@ -44,7 +44,7 @@ export async function auditWebsite(raw:string,mode:Mode="quick"):Promise<string>
  };
  for(const url of home.links)accept(url);
  // Find sitemap index or sitemap.xml; a sitemap may declare up to 5 child indexes.
- const sitemapCandidates=[new URL("/sitemap.xml",site.origin).toString(),new URL("/sitemap_index.xml",site.origin).toString()];
+ const sitemapCandidates=[new URL("/sitemap.xml",site.origin).toString(),new URL("/sitemap_index.xml",site.origin).toString(),new URL("/wp-sitemap.xml",site.origin).toString()];
  const visitedSitemaps=new Set<string>();
  for(const mapUrl of sitemapCandidates){
   if(visitedSitemaps.has(mapUrl))continue;
