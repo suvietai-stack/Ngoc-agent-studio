@@ -5,6 +5,7 @@ import {createClient} from "@/lib/supabase/server";
 import {generateText} from "@/lib/ai";
 import {getOpenAIKey} from "@/lib/integration-credentials";
 import {auditWebsite} from "@/lib/seo";
+import {parseAuditV2} from "@/lib/seo-audit-v2.mjs";
 import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 import {isStudioOwner} from "@/lib/access";
 import type {Result} from "@/app/actions";
@@ -221,20 +222,76 @@ export async function updateProjectWebsiteAction(projectId:string,raw:string):Pr
  }catch(e){return failure(message(e))}
 }
 
-export async function seoAuditAction(projectId:string):Promise<Result>{
- if(!uuid.safeParse(projectId).success)return failure("Chọn dự án cần audit.");
+export async function seoAuditAction(projectId:string,mode:"quick"|"extended"="quick"):Promise<Result>{
+ if(!uuid.safeParse(projectId).success)return failure("Chọn dự án cần Audit.");
+ if(mode!=="quick"&&mode!=="extended")return failure("Chế độ Audit không hợp lệ.");
  try{
   const {db,user}=await session();
   const {data:project}=await db.from("projects").select("id,name,status,website_url").eq("owner_id",user.id).eq("id",projectId).maybeSingle();
-  if(!project||project.status!=="active")return failure("Chỉ tạo SEO Audit trong dự án đang hoạt động.");
-  if(!project.website_url)return failure("Dự án chưa có website HTTPS để audit.");
-  const report=await auditWebsite(project.website_url);
-  const title=`SEO Audit: ${project.name}`.slice(0,180);
+  if(!project||project.status!=="active")return failure("Chỉ Audit dự án đang hoạt động.");
+  if(!project.website_url)return failure("Hãy lưu website HTTPS trước khi Audit.");
+  const {data:previous}=await db.from("content_assets").select("created_at").eq("owner_id",user.id).eq("project_id",projectId).eq("channel","seo-audit").order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if(previous?.created_at&&Date.now()-new Date(previous.created_at).getTime()<60000)
+   return failure("Vừa chạy Audit gần đây. Hãy xem báo cáo hoặc thử lại sau một phút.");
+  const report=await auditWebsite(project.website_url,mode);
+  const parsed=parseAuditV2(report);
+  if(!parsed)return failure("Kết quả Audit không hợp lệ, chưa lưu.");
+  const title=("SEO Audit "+(mode==="extended"?"mở rộng":"nhanh")+": "+project.name).slice(0,180);
   const {error}=await db.from("content_assets").insert({owner_id:user.id,project_id:project.id,channel:"seo-audit",title,body:report,status:"draft"});
   if(error)return failure("Không lưu được báo cáo SEO.");
   revalidatePath("/");
-  return success("Đã quét HTML website thực tế. Mở tab Nội dung để xem báo cáo.");
+  return success("Đã kiểm tra "+parsed.summary.scanned+" URL thực tế, ghi nhận "+parsed.summary.severity.high+" vấn đề cần xác minh ưu tiên cao và "+parsed.summary.severity.medium+" cảnh báo. Xem tại SEO Website.");
  }catch(e){return failure("Audit SEO: "+message(e))}
+}
+
+/** Turn verified HTML audit findings into a bounded, manually run work queue.
+ * This action does NOT invoke AI or modify the audited website.
+ */
+export async function createSeoAuditTasksAction(projectId:string,auditId:string):Promise<Result>{
+ if(!uuid.safeParse(projectId).success||!uuid.safeParse(auditId).success)return failure("Dữ liệu dự án hoặc Audit không hợp lệ.");
+ try{
+  const {db,user}=await session();
+  const {data:project}=await db.from("projects").select("status").eq("id",projectId).eq("owner_id",user.id).maybeSingle();
+  if(project?.status!=="active")return failure("Dự án chưa hoạt động.");
+  const {data:asset}=await db.from("content_assets").select("body,id").eq("id",auditId).eq("owner_id",user.id).eq("project_id",projectId).eq("channel","seo-audit").maybeSingle();
+  if(!asset)return failure("Không có báo cáo Audit thuộc dự án này.");
+  const report=parseAuditV2(asset.body);
+  if(!report)return failure("Chỉ có thể tạo việc từ báo cáo Audit cấu trúc mới.");
+  const candidates=report.summary.issues.filter(i=>i.severity!=="info").slice(0,8);
+  if(!candidates.length)return success("Audit không có cảnh báo ưu tiên cần tạo việc; chưa có nhiệm vụ mới.");
+  const [agentResult,taskResult]=await Promise.all([
+   db.from("agents").select("id,name").eq("owner_id",user.id).eq("project_id",projectId).eq("enabled",true),
+   db.from("tasks").select("brief").eq("owner_id",user.id).eq("project_id",projectId).eq("source","seo-audit").order("created_at",{ascending:false}).limit(200)
+  ]);
+  if(agentResult.error||taskResult.error)return failure("Không kiểm tra được Agent hoặc công việc hiện có.");
+  const existing=(taskResult.data||[]).map(t=>String(t.brief||""));
+  const agents=agentResult.data||[];
+  const choose=(code:string)=>{
+   const type=/title|h1|description|alt|canonical/i.test(code)?"On-page SEO Agent":
+     /internal|link/i.test(code)?"SEO Internal Link Agent":"Technical SEO Agent";
+   return agents.find(a=>a.name===type)||agents.find(a=>a.name==="SEO Agent")||null;
+  };
+  const pending=candidates.filter(i=>!existing.some(brief=>brief.includes("AUDIT_ID:"+auditId+" CODE:"+i.code)));
+  if(!pending.length)return success("Các vấn đề ưu tiên của báo cáo này đã có trong hàng đợi, không tạo trùng.");
+  const rows=pending.map(issue=>{
+   const agent=choose(issue.code);
+   const brief=[
+    "Nguồn: SEO Audit "+report.checkedAt+"; URL bắt đầu: "+report.scope.root,
+    "AUDIT_ID:"+auditId+" CODE:"+issue.code,
+    "Dấu hiệu: "+issue.message,
+    "Số URL ảnh hưởng trong phạm vi quét: "+issue.count,
+    "URL cần kiểm tra: "+issue.urls.slice(0,6).join(", "),
+    "Yêu cầu: xác minh nguyên nhân và đưa phương án có bằng chứng. Không tự sửa website, đăng bài hoặc đổi URL."
+   ].join("\n").slice(0,4800);
+   return {owner_id:user.id,project_id:projectId,agent_id:agent?.id||null,
+    title:("SEO Audit · "+issue.code+" · "+issue.count+" URL").slice(0,190),
+    brief,status:"draft",source:"seo-audit"};
+  });
+  const {error}=await db.from("tasks").insert(rows);
+  if(error)return failure("Không tạo được công việc từ báo cáo.");
+  revalidatePath("/");
+  return success("Đã tạo "+rows.length+" công việc SEO chờ kiểm tra. Chưa chạy AI, sửa website hoặc xuất bản.");
+ }catch(e){return failure(message(e))}
 }
 
 /** Create a three-stage workflow without running AI or publishing. */
