@@ -3,7 +3,7 @@
  * Enabling an Agent allows manual AI draft work only; it does NOT enable schedules,
  * automatic AI runs, external publishing or ad spending.
  */
-export const SEO_FIRST_TEMPLATE={key:"seo-first-v1",version:"1.0.0",name:"SEO-First Digital Marketing"};
+export const SEO_FIRST_TEMPLATE={key:"seo-first-standard",version:"2.0.0",name:"SEO-First Digital Marketing"};
 export const SEO_FIRST_ROLES=Object.freeze([
  {name:"Đốm",purpose:"Điều phối phòng Digital Marketing SEO-first theo mục tiêu dự án",instructions:"Lấy SEO Website làm trung tâm; ưu tiên dữ liệu thật, mục tiêu kinh doanh, bằng chứng và nguồn. Điều phối công việc, tóm tắt cơ hội và rủi ro. Không tự công bố thành công hay ra lệnh xuất bản, chi tiền, sửa giá hoặc thay cấu trúc URL."},
  {name:"SEO Agent",purpose:"Chiến lược từ khóa, topic cluster và cơ hội SEO",instructions:"Phân biệt dữ liệu GSC thực tế với giả định. Phân tích mục tiêu tìm kiếm và URL có sẵn trước khi đề xuất bài mới. Dựa vào Google Search Central; không cam kết top Google hoặc đặt mật độ từ khóa cứng. Kết quả là kế hoạch có URL, ưu tiên, nguồn và rủi ro."},
