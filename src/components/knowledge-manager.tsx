@@ -1,13 +1,13 @@
 "use client";
 import {useState,useTransition} from "react";
 import {useRouter} from "next/navigation";
-import {BookOpen,Check,Plus,Trash2,X,Pencil} from "lucide-react";
+import {BookOpen,Check,Plus,Trash2,X,Pencil,Upload,FileText} from "lucide-react";
 import type {WorkspaceData} from "@/lib/types";
-import {deleteKnowledgeAction,updateKnowledgeAction} from "@/app/actions";
+import {createKnowledgeAction,deleteKnowledgeAction,updateKnowledgeAction} from "@/app/actions";
 
 export function KnowledgeManager({initial,filter,onAdd}:{initial:WorkspaceData;filter:string;onAdd:()=>void}){
  const router=useRouter(),[pending,start]=useTransition(),[editing,setEditing]=useState<string|null>(null),[notice,setNotice]=useState("");
- const [title,setTitle]=useState(""),[content,setContent]=useState("");
+ const [title,setTitle]=useState(""),[content,setContent]=useState(""),[importing,setImporting]=useState(false);
  const projects=new Map(initial.projects.map(p=>[p.id,p.name]));
  const rows=initial.knowledge.filter(x=>filter==="all"||x.project_id===filter);
  function edit(id:string,name:string,body:string){setEditing(id);setTitle(name);setContent(body);setNotice("");}
@@ -16,12 +16,32 @@ export function KnowledgeManager({initial,filter,onAdd}:{initial:WorkspaceData;f
   const data=new FormData(e.currentTarget),id=editing;
   start(async()=>{const result=await updateKnowledgeAction(id,data);setNotice(result.message);if(result.ok)setEditing(null);router.refresh()});
  }
+ async function uploadTextFile(file:File){
+  const projectId=filter;
+  if(!projectId||projectId==="all"){setNotice("Hãy mở một dự án cụ thể trước khi tải tài liệu.");return;}
+  if(!/\.(txt|md|csv|json)$/i.test(file.name)){setNotice("Hiện hỗ trợ TXT, Markdown, CSV và JSON dạng văn bản. PDF/Word cần bộ trích xuất tài liệu riêng.");return;}
+  if(file.size>90000){setNotice("Tệp quá lớn. Hiện giới hạn 90 KB để đảm bảo chất lượng và an toàn.");return;}
+  setImporting(true);
+  try{
+   const raw=(await file.text()).trim();
+   if(raw.length<20||raw.length>28500){setNotice("Nội dung cần từ 20 đến 28.500 ký tự; có thể chia tài liệu thành nhiều phần.");return;}
+   const payload=new FormData();
+   payload.set("project_id",projectId);
+   payload.set("title",file.name.slice(0,175));
+   payload.set("content","Nguồn tài liệu tải lên bởi chủ dự án: "+file.name+"\nTrạng thái: chưa được xác minh tự động.\n\n"+raw);
+   const res=await createKnowledgeAction(payload);
+   setNotice(res.message);
+   if(res.ok)router.refresh();
+  }catch{setNotice("Không đọc được tệp văn bản. Hãy kiểm tra định dạng UTF-8.");}
+  finally{setImporting(false);}
+ }
  function remove(id:string){
   if(!window.confirm("Xóa vĩnh viễn mục tri thức này? Nội dung sẽ không còn được Agent tham khảo."))return;
   start(async()=>{const result=await deleteKnowledgeAction(id);setNotice(result.message);router.refresh()});
  }
  return <section className="panel"><div className="panel-head"><h3>Kho tri thức ({rows.length})</h3>
-  <button className="primary" onClick={onAdd}><Plus size={16}/> Thêm tài liệu</button></div>
+  <div className="knowledge-actions"><label className="ops-outline knowledge-upload"><Upload size={15}/> Tải file văn bản<input type="file" accept=".txt,.md,.csv,.json,text/plain,text/markdown,text/csv,application/json" disabled={pending||importing} onChange={e=>{const f=e.currentTarget.files?.[0];if(f)void uploadTextFile(f);e.currentTarget.value="";}}/></label><button className="primary" onClick={onAdd}><Plus size={16}/> Thêm tài liệu</button></div></div>
+  <p className="muted knowledge-source-note"><FileText size={14}/> Tài liệu của dự án dùng cho Agent tham khảo; không tự biến nội dung tải lên thành thông tin đã xác minh. PDF/Word chưa hỗ trợ trích xuất trực tiếp.</p>
   {notice&&<div className="alert" role="status">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
   {rows.length===0?<p className="muted">Chưa có tri thức cho bộ lọc này. Thêm hướng dẫn thương hiệu, sản phẩm và tài liệu đã kiểm chứng.</p>:
    <div className="list">{rows.map(k=><div className="item" key={k.id}>
