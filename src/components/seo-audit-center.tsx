@@ -3,6 +3,7 @@ import {useState,useTransition} from "react";
 import {useRouter} from "next/navigation";
 import {Activity,AlertCircle,AlertTriangle,ArrowRight,BookOpen,CheckCircle2,ClipboardList,ExternalLink,FileSearch,Globe2,Link2,MapPin,RefreshCw,ShieldCheck,TrendingUp} from "lucide-react";
 import type {WorkspaceData} from "@/lib/types";
+import {WordPressRepairBoard} from "@/components/wordpress-repair";
 import {seoAuditAction,updateProjectWebsiteAction,createSeoAuditTasksAction,reindexSeoAuditAction} from "@/app/operations";
 import {parseAuditV2,SEO_OFFICIAL_SOURCES} from "@/lib/seo-audit-v2.mjs";
 import {parseSeoAuditReport} from "@/lib/seo-audit-report.mjs";
@@ -159,6 +160,7 @@ export function SeoAuditCenter({initial,projectId}:{initial:WorkspaceData;projec
    <div className="seo2-task-list">{taskRows.slice(0,12).map(t=><div key={t.id}><b>{t.title}</b><small>{t.status==="draft"?"Chờ xử lý":t.status==="approved"?"Đã duyệt":t.status==="pending_approval"?"Chờ duyệt":t.status||"Không rõ"} · {showDate(t.created_at)}</small></div>)}
    {!taskRows.length&&<div className="seo2-onboarding"><ClipboardList size={23}/><h3>Chưa có việc SEO từ Audit</h3><p>Quét website, xem vấn đề và bấm “Tạo công việc từ Audit”. Không tự phát sinh chi phí AI.</p></div>}</div>
   </section>}
+  <WordPressRepairBoard projectId={projectId} changes={initial.wpChanges}/>
   <section className="panel seo2-panel seo2-bottom">
    <div className="seo2-panel-title"><div><h3>Nguồn chuẩn & lịch sử</h3><p>Những khuyến nghị SEO được đối chiếu theo tài liệu chính thức, không cam kết thứ hạng.</p></div><BookOpen size={19}/></div>
    <div className="seo2-doc-links">{SEO_OFFICIAL_SOURCES.slice(0,4).map(x=><a href={x.url} key={x.url} target="_blank" rel="noopener noreferrer">{x.name}<ExternalLink size={12}/></a>)}</div>
