@@ -234,3 +234,34 @@ export async function createWorkflowAction(projectId:string,rawTopic:string):Pro
   return success("Đã tạo chuỗi SEO → Content → Social. Chạy bước đầu, duyệt nội dung rồi mới chạy bước kế tiếp.");
  }catch(e){return failure(message(e))}
 }
+
+export async function toggleProjectAutoRunAction(projectId:string,enabled:boolean):Promise<Result>{
+ if(!uuid.safeParse(projectId).success)return failure("Dự án không hợp lệ.");
+ if(enabled&&(!process.env.CRON_SECRET||!process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.AUTO_AGENT_RUNNER_ENABLED!=="true"))
+  return failure("Worker chưa được bật an toàn trên Vercel (CRON_SECRET, service role, AUTO_AGENT_RUNNER_ENABLED).");
+ try{
+  const {db,user}=await session();
+  const {data:project}=await db.from("projects").select("id").eq("owner_id",user.id).eq("id",projectId).maybeSingle();
+  if(!project)return failure("Không tìm thấy dự án.");
+  if(enabled&&!await getOpenAIKey(db,user.id,projectId))return failure("Hãy kết nối OpenAI cho dự án trước.");
+  const {data,error}=await db.from("projects").update({auto_run_enabled:enabled,updated_at:new Date().toISOString()})
+   .eq("id",projectId).eq("owner_id",user.id).select("id").maybeSingle();
+  if(error||!data)return failure("Không lưu được chế độ tự động. Cần migration 005.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:enabled?"automation.enabled":"automation.disabled",target_table:"projects",target_id:projectId});
+  revalidatePath("/");
+  return success(enabled?"Đã bật AI tự tạo bản nháp theo lịch, vẫn cần người duyệt.":"Đã tắt AI chạy nền cho dự án.");
+ }catch(e){return failure(message(e))}
+}
+export async function updateDraftContentAction(assetId:string,rawText:string):Promise<Result>{
+ const parsed=z.object({assetId:uuid,body:z.string().trim().min(20).max(16000)}).safeParse({assetId,body:rawText});
+ if(!parsed.success)return failure("Bản nháp phải dài từ 20 đến 16.000 ký tự.");
+ try{
+  const {db,user}=await session();
+  const {data,error}=await db.from("content_assets").update({body:parsed.data.body,updated_at:new Date().toISOString()})
+   .eq("id",assetId).eq("owner_id",user.id).eq("status","draft").select("id").maybeSingle();
+  if(error||!data)return failure("Chỉ được chỉnh sửa bản nháp chưa phê duyệt.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"content.draft_edited",target_table:"content_assets",target_id:assetId});
+  revalidatePath("/");
+  return success("Đã lưu bản nháp chỉnh sửa. Vẫn chờ duyệt trước khi chuyển bước.");
+ }catch(e){return failure(message(e))}
+}
