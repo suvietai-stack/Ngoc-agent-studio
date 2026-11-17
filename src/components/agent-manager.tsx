@@ -20,7 +20,7 @@ export function AgentManager({initial,filter,onAdd}:{initial:WorkspaceData;filte
    <h3>{a.name}</h3><p>{a.purpose}</p><small>{a.project_id?projects.get(a.project_id):"Agent dùng chung"} · {a.model}</small>
    <div className="card-bottom"><button className="flat" onClick={()=>setEditing(editing===a.id?null:a.id)}><Pencil size={14}/> Sửa</button>
     <button className="flat" disabled={pending} onClick={()=>execute(()=>toggleAgentAction(a.id,!a.enabled))}>{a.enabled?"Tắt Agent":"Bật Agent"}</button></div>
-   {editing===a.id&&<form key={a.id} className="form-stack" onSubmit={e=>{e.preventDefault();execute(()=>updateAgentAction(a.id,new FormData(e.currentTarget)),true);}}>
+   {editing===a.id&&<form key={a.id} className="form-stack" onSubmit={e=>{e.preventDefault();const data=new FormData(e.currentTarget);execute(()=>updateAgentAction(a.id,data),true);}}>
     <label>Tên Agent<input name="name" minLength={2} maxLength={100} defaultValue={a.name} required/></label>
     <label>Vai trò<input name="purpose" minLength={6} maxLength={500} defaultValue={a.purpose} required/></label>
     <label>Hướng dẫn làm việc<textarea name="instructions" minLength={10} maxLength={20000} rows={8} defaultValue={a.instructions} required/></label>
