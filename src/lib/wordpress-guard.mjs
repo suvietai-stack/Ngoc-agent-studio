@@ -31,7 +31,7 @@ export function editableMetaDescription(meta){
  return null;
 }
 export function buildSafeH1Content(raw,text){
- if(typeof raw!=="string"||raw.length>85000)throw new Error("Nội dung quá lớn hoặc không có bản gốc để sửa an toàn.");
+ if(typeof raw!=="string"||raw.trim().length<20||raw.length>85000)throw new Error("Nội dung trống, quá ngắn hoặc quá lớn; không tự sửa H1 vì có thể dùng trình dựng trang.");
  if(/<h1\b/i.test(raw))throw new Error("Nội dung đã có H1; không thêm trùng.");
  if(/elementor|vc_row|et_pb_|oxygen|fl-builder|<!--\s*wp:html\s*-->/i.test(raw))
   throw new Error("Trang dùng trình dựng/HTML tùy biến; cần adapter riêng, không tự ghi đè.");
