@@ -22,6 +22,17 @@ export async function executeNextAutoDraft():Promise<Outcome>{
  if(projectError)throw new Error("Cần áp dụng migration auto-run 005.");
  if(!projects?.length)return {processed:false,reason:"Không có dự án nào bật tự tạo bản nháp."};
  const ids=projects.map(p=>p.id);
+ // Recover tasks abandoned by a timed-out serverless execution after 15 minutes.
+ const staleBefore=new Date(Date.now()-15*60*1000).toISOString();
+ const {data:stale}=await db.from("tasks").select("id").eq("owner_id",owner).eq("status","running")
+  .in("project_id",ids).lt("updated_at",staleBefore).limit(20);
+ for(const item of stale||[]){
+  const now=new Date().toISOString();
+  const {data:recovered}=await db.from("tasks").update({status:"failed",updated_at:now})
+   .eq("owner_id",owner).eq("id",item.id).eq("status","running").lt("updated_at",staleBefore).select("id").maybeSingle();
+  if(recovered)await db.from("task_runs").update({state:"failed",summary:"Tự phục hồi tác vụ bị kẹt.",error_message:"Quá thời gian chạy.",finished_at:now})
+   .eq("owner_id",owner).eq("task_id",item.id).eq("state","running");
+ }
  const {data:tasks,error:taskError}=await db.from("tasks").select("*").eq("owner_id",owner)
   .in("project_id",ids).in("status",["draft","failed"]).order("created_at",{ascending:true}).limit(100);
  if(taskError)throw new Error("Không tải được hàng đợi Agent.");
