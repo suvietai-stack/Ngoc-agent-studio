@@ -3,7 +3,7 @@ import {useState,useTransition} from "react";
 import {useRouter} from "next/navigation";
 import {Activity,AlertCircle,AlertTriangle,ArrowRight,BookOpen,CheckCircle2,ClipboardList,ExternalLink,FileSearch,Globe2,Link2,MapPin,RefreshCw,ShieldCheck,TrendingUp} from "lucide-react";
 import type {WorkspaceData} from "@/lib/types";
-import {seoAuditAction,updateProjectWebsiteAction,createSeoAuditTasksAction} from "@/app/operations";
+import {seoAuditAction,updateProjectWebsiteAction,createSeoAuditTasksAction,reindexSeoAuditAction} from "@/app/operations";
 import {parseAuditV2,SEO_OFFICIAL_SOURCES} from "@/lib/seo-audit-v2.mjs";
 import {parseSeoAuditReport} from "@/lib/seo-audit-report.mjs";
 import {projectWorkspaceHref} from "@/lib/project-entry.mjs";
@@ -35,6 +35,9 @@ export function SeoAuditCenter({initial,projectId}:{initial:WorkspaceData;projec
  const selected=audits.find(x=>x.id===selectedId)||audits[0];
  const report=selected?parseAuditV2(selected.body):null;
  const legacy=selected&&!report?parseSeoAuditReport(selected.body):null;
+ const indexRun=selected?initial.seoCrawls.find(run=>run.source_asset_id===selected.id):null;
+ const indexedUrlCount=initial.seoUrls.filter(row=>row.project_id===projectId).length;
+ const indexedFindingCount=indexRun?initial.seoFindings.filter(row=>row.project_id===projectId&&row.crawl_id===indexRun.id).length:0;
  const older=audits.filter(x=>x.id!==selected?.id).map(x=>parseAuditV2(x.body)).find(x=>x&&report&&x.scope.root===report.scope.root);
  const taskRows=initial.tasks.filter(t=>t.project_id===projectId&&t.source==="seo-audit");
  const savedUrl=project?.website_url||"";
@@ -76,6 +79,13 @@ export function SeoAuditCenter({initial,projectId}:{initial:WorkspaceData;projec
     {name:"Liên kết nội bộ",value:s?String(s.internal.uniqueTargets):"—",info:"URL đích phát hiện trong mẫu",icon:Link2}
    ].map(m=><article className="seo2-metric" key={m.name}><m.icon size={19}/><span>{m.name}</span><strong>{m.value}</strong><small>{m.info}</small></article>)}
   </div>
+  {report&&<section className="seo2-index-state" aria-label="SEO Inventory đã lưu">
+   <div><b>{indexRun?"Đã lưu chỉ mục SEO riêng dự án":"Chưa đồng bộ chỉ mục SEO"}</b>
+    <small>{indexRun?indexedUrlCount+" URL trong inventory · "+indexedFindingCount+" nhóm phát hiện của lần quét đang xem":"Báo cáo Audit có thật, nhưng dữ liệu URL và finding chưa được chuẩn hóa vào bảng SEO."}</small></div>
+   <button className="ops-outline" disabled={pending} onClick={()=>call(()=>reindexSeoAuditAction(projectId,selected?.id||""))}>
+    {indexRun?"Đồng bộ lại":"Lập chỉ mục từ Audit"}
+   </button>
+  </section>}
   <div className="seo2-tabs" role="tablist" aria-label="Các chức năng SEO">
    {sectionNames.map(t=><button key={t.id} type="button" role="tab" aria-selected={section===t.id} onClick={()=>setSection(t.id)}>{t.title}</button>)}
   </div>

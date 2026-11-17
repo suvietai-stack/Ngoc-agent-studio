@@ -39,7 +39,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{project
    requestedTab={requestedTab} invalidProject={Boolean(requestedProject)} truncated={projectsTruncated} initialCreate={requested.new==="1"}/>;
  // The server retrieves ONLY rows assigned to the chosen project. No cross-project
  // agent/content/knowledge/API connection rows reach client components.
- const sources=["agents","tasks","knowledge_items","integrations","task_runs","automation_schedules","content_assets","dom_messages"] as const;
+ const sources=["agents","tasks","knowledge_items","integrations","task_runs","automation_schedules","content_assets","dom_messages","workflow_definitions","workflow_runs","workflow_step_runs","seo_crawl_runs","seo_site_urls","seo_findings"] as const;
  const results=await Promise.all(sources.map(async name=>{
   const rows:Row[]=[];
   for(let offset=0;offset<maxRecords;offset+=pageSize){
@@ -60,7 +60,9 @@ export default async function Home({searchParams}:{searchParams:Promise<{project
   projects:[selectedProject],agents:data.agents,tasks:data.tasks,
   knowledge:data.knowledge_items,integrations:data.integrations,runs:data.task_runs,
   automations:data.automation_schedules,content:data.content_assets,
-  messages:[...data.dom_messages].reverse()
+  messages:[...data.dom_messages].reverse(),
+  workflowDefinitions:data.workflow_definitions,workflowRuns:data.workflow_runs,workflowSteps:data.workflow_step_runs,
+  seoCrawls:data.seo_crawl_runs,seoUrls:data.seo_site_urls,seoFindings:data.seo_findings
  };
  return <Workspace initial={initial} incompleteSources={incompleteSources} email={user.email||"Cá nhân"} aiConfigured={data.integrations.some(i=>i.provider==="openai"&&i.connection_status==="connected")} encryptionConfigured={encryptionReady()} envOpenAI={aiReady()} runnerConfigured={Boolean(process.env.CRON_SECRET&&process.env.SUPABASE_SERVICE_ROLE_KEY&&process.env.AUTO_AGENT_RUNNER_ENABLED==="true")} oauthReady={oauthReadyFlags()}/>;
 }

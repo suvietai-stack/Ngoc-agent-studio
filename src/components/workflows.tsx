@@ -5,6 +5,7 @@ import {useRouter} from "next/navigation";
 import {CheckCircle2,GitBranch,LockKeyhole,Play,Plus} from "lucide-react";
 import type {Row,WorkspaceData} from "@/lib/types";
 import {createWorkflowAction,runTaskAction} from "@/app/operations";
+import {createWorkflowPlanAction,recordWorkflowStepAction} from "@/app/workflow-v2-actions";
 import type {Result} from "@/app/actions";
 
 type Props={
@@ -29,6 +30,7 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
  const [pending,start]=useTransition();
  const [topic,setTopic]=useState("");
  const [notice,setNotice]=useState("");
+ const [notes,setNotes]=useState<Record<string,string>>({});
  const approved=new Set(initial.content.filter(a=>a.status==="approved"&&a.task_id).map(a=>a.task_id!));
  const grouped=new Map<string,Row[]>();
  for(const task of initial.tasks){
@@ -39,6 +41,10 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
  const workflows=[...grouped.entries()].map(([id,steps])=>({
   id,steps:steps.sort((a,b)=>(a.workflow_step||0)-(b.workflow_step||0))
  })).sort((a,b)=>String(b.steps[0]?.created_at||"").localeCompare(String(a.steps[0]?.created_at||"")));
+ const definitions=initial.workflowDefinitions.filter(w=>w.project_id===selectedProject);
+ const v2Runs=initial.workflowRuns.filter(w=>w.project_id===selectedProject)
+  .sort((a,b)=>String(b.created_at||"").localeCompare(String(a.created_at||""))).slice(0,12);
+ const allSteps=initial.workflowSteps.filter(s=>s.project_id===selectedProject);
  const projectNames=new Map(initial.projects.map(p=>[p.id,p.name]));
  const activeProject=initial.projects.some(p=>p.id===selectedProject&&p.status==="active");
 
@@ -57,6 +63,42 @@ export function WorkflowBoard({initial,filter,selectedProject,onProjectChange,ai
    <div><h3>Chuỗi cộng tác 3 AI Agent</h3><p>SEO nghiên cứu → Content viết bài → Social biên tập. Mỗi bước phải được duyệt nội dung trước khi bước sau được chạy. Không tự xuất bản.</p></div>
   </div>
   {notice&&<div className="alert" role="status">{notice}<button type="button" onClick={()=>setNotice("")}>×</button></div>}
+  
+  <div className="workflow-v2-box">
+   <div className="workflow-v2-heading"><div><h3>Quy trình chuẩn SEO-First 2.0</h3>
+    <p>Mẫu có phiên bản, nhiều bước và cổng duyệt. Tạo lộ trình không tự gọi AI hoặc đăng lên website/Facebook.</p></div>
+    <span className="chip">{definitions.length} mẫu trong dự án</span></div>
+   {definitions.length===0?<div className="workflow-v2-empty"><b>Chưa cài bộ mẫu quy trình 2.0</b>
+    <p>Dùng nút “Cài bộ mẫu vào dự án” ở khu vực Tự động hóa để thêm 13 quy trình mặc định tắt.</p></div>:
+    <div className="workflow-v2-library">{definitions.map(def=><article key={def.id} className="workflow-v2-definition">
+     <div><b>{def.title}</b><small>{def.steps?.length||0} bước · {def.template_version||"Chưa rõ phiên bản"} · Không chạy nền</small></div>
+     <button type="button" className="ops-outline" disabled={pending||!activeProject} onClick={()=>execute(()=>createWorkflowPlanAction(selectedProject,def.template_key||""))}><Plus size={14}/> Lập kế hoạch</button>
+    </article>)}</div>}
+   {v2Runs.length>0&&<div className="workflow-v2-runs"><h3>Lộ trình đã tạo</h3>{v2Runs.map(run=>{
+    const runSteps=allSteps.filter(st=>st.run_id===run.id).sort((a,b)=>(a.step_order||0)-(b.step_order||0));
+    const done=new Set(runSteps.filter(st=>st.status==="done"||st.status==="approved").map(st=>st.step_key));
+    const completed=done.size;
+    return <details className="workflow-v2-run" key={run.id}>
+     <summary><span><b>{run.title}</b><small>{completed}/{runSteps.length} bước được xác nhận thủ công · {run.template_version}</small></span>
+       <span className="chip">{run.status==="planned"?"Kế hoạch":run.status==="active"?"Đang theo dõi":run.status||"—"}</span></summary>
+     <div className="workflow-v2-steps">{runSteps.map(st=>{
+      const unlocked=(st.requires||[]).every(key=>done.has(key));
+      const finished=done.has(st.step_key);
+      const external=st.gate==="external";
+      const canConfirm=unlocked&&!finished&&!external&&["pending","ready","needs_approval"].includes(st.status||"");
+      return <div className="workflow-v2-step" key={st.id}>
+       <div className="workflow-v2-step-main"><span className={"workflow-v2-step-index"+(finished?" complete":"")}>{st.step_order}</span>
+        <div><b>{st.label}</b><small>{external?"Chặn hành động bên ngoài: chưa có adapter/ủy quyền":finished?"Đã ghi nhận bằng chứng thủ công":unlocked?"Cần người kiểm tra và xác nhận":"Đợi bước trước"}</small></div></div>
+       {canConfirm&&<div className="workflow-v2-evidence">
+        <textarea rows={2} value={notes[st.id]||""} placeholder="Ghi bằng chứng/kết quả thực tế (≥ 15 ký tự). Không đánh dấu nếu chưa làm." onChange={e=>setNotes(old=>({...old,[st.id]:e.target.value}))}/>
+        <button type="button" className="ops-outline" disabled={pending||(notes[st.id]||"").trim().length<15} onClick={()=>execute(()=>recordWorkflowStepAction(run.id,st.id,notes[st.id]||""))}>Ghi nhận đã kiểm tra</button>
+       </div>}
+      </div>;
+     })}</div>
+    </details>;
+   })}</div>}
+  </div>
+  <div className="workflow-legacy-title"><h3>Chuỗi 3 Agent hiện có</h3><p>Giữ lại tương thích công việc cũ: SEO → Content → Facebook. Các bản nháp vẫn phải duyệt.</p></div>
   <form className="workflow-form" onSubmit={e=>{e.preventDefault();execute(()=>createWorkflowAction(selectedProject,topic),true);}}>
    <label>Dự án
     <select value={selectedProject} required onChange={e=>onProjectChange(e.target.value)}>
