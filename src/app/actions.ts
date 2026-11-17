@@ -16,7 +16,7 @@ export async function createProjectAction(form:FormData):Promise<Result>{
  if(p.data.website_url){try{website=parsePublicHttpsUrl(p.data.website_url).toString();}catch{return fail("Website dự án phải là địa chỉ HTTPS công khai, không có IP hoặc port tùy chỉnh.");}}
  try{const {db,user}=await auth();const {error}=await db.from("projects").insert({...p.data,owner_id:user.id,website_url:website});if(error)return fail(err(error));revalidatePath("/");return ok("Đã tạo dự án.");}catch(e){return fail(err(e))}
 }
-const cap=["read","research","draft","edit","publish","external_send","delete"] as const;
+const cap=["read","research","draft","edit"] as const; // No external publish/send/delete implementation.
 export async function createAgentAction(form:FormData):Promise<Result>{
  const p=z.object({name:z.string().trim().min(2).max(100),purpose:z.string().trim().min(6).max(500),instructions:z.string().trim().min(10).max(20000),model:z.string().trim().min(3).max(100),project_id:z.uuid(),capabilities:z.array(z.enum(cap))}).safeParse({name:form.get("name"),purpose:form.get("purpose"),instructions:form.get("instructions"),model:form.get("model")||"gpt-4.1-mini",project_id:form.get("project_id"),capabilities:form.getAll("capabilities").map(String)});
  if(!p.success)return fail("Thông tin Agent chưa đầy đủ hoặc không hợp lệ.");
