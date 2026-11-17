@@ -95,3 +95,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .agent-groups button[aria-pressed="true"]{border-color:#6ca8a3;background:#e7f4f1;color:#266b65}
 .agent-groups small{font-size:10px;color:inherit;opacity:.8}
 @media(max-width:640px){.agent-groups{gap:6px}.agent-groups button{padding:8px 10px;font-size:11px}}
+
+.seo-home-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;border-color:#cfe5e0;background:#f9fcfb}
+.seo-home-summary h3{margin:0 0 5px;font-size:14px}.seo-home-summary p{margin:0;color:#678093;font-size:12px}.seo-home-summary button{white-space:nowrap;display:inline-flex;align-items:center;gap:8px;min-height:44px}
+@media(max-width:640px){.seo-home-summary{flex-direction:column;align-items:stretch}.seo-home-summary button{justify-content:center}}
