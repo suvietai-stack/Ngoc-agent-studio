@@ -7,6 +7,7 @@ import {AccessDenied} from "@/components/access-denied";
 import {Workspace} from "@/components/workspace";
 import {ProjectGate} from "@/components/project-gate";
 import {projectFromOwnedList,allowedWorkspaceTab} from "@/lib/project-entry.mjs";
+import {workspaceOrderColumn} from "@/lib/workspace-order.mjs";
 import {Login} from "@/components/login";
 import {Setup} from "@/components/setup";
 import type {WorkspaceData,Row} from "@/lib/types";
@@ -45,7 +46,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{project
   for(let offset=0;offset<maxRecords;offset+=pageSize){
    const result=await db.from(name).select("*")
     .eq("owner_id",user.id).eq("project_id",selectedProject.id)
-    .order("created_at",{ascending:false}).order("id",{ascending:false}).range(offset,offset+pageSize-1);
+    .order(workspaceOrderColumn(name),{ascending:false}).order("id",{ascending:false}).range(offset,offset+pageSize-1);
    if(result.error)return {rows,error:result.error,truncated:false};
    rows.push(...(result.data||[]) as Row[]);
    if((result.data||[]).length<pageSize)return {rows,error:null,truncated:false};
