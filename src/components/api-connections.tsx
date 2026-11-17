@@ -34,7 +34,7 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI}:P
    return <article className="integration" key={id}>
     <div className="card-icon"><PlugZap size={20}/></div><h3>{title}</h3>
     <span className={"chip"+(status==="connected"?" on":"")}>{status==="connected"?"Đã xác minh":status==="error"?"Kiểm tra thất bại":"Chưa xác minh"}</span>
-    {id==="openai"&&envOpenAI&&<small>Máy chủ đã có OpenAI API key dùng chung.</small>}
+    {id==="openai"&&envOpenAI&&<small>API key máy chủ không dùng chung; mỗi dự án phải lưu và xác minh khóa riêng.</small>}
     <p>{description}</p>
     <form className="form-stack" onSubmit={save}>
      <input type="hidden" name="project_id" value={selected}/>

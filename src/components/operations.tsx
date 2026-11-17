@@ -24,7 +24,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
  {notice&&<div className="alert" role="status">{notice}<button onClick={()=>setNotice("")}>×</button></div>}
  {tab==="dom"&&<>
   <section className="ops-hero"><div className="ops-icon"><Sparkles size={26}/></div><div><p className="eyebrow">ĐỐM AI · TRỢ LÝ ĐIỀU PHỐI</p><h2>Hỏi Đốm bất cứ điều gì về chiến dịch.</h2><p>Đốm sử dụng dự án, nhiệm vụ và kho tri thức của bạn để tư vấn. Không tự đăng hoặc thay đổi tài khoản bên ngoài.</p></div></section>
-  {!projectAiReady&&<div className="ops-warning"><b>Chưa bật bộ não AI</b><p>Thêm API key trong tab Kết nối của dự án hoặc cấu hình Lịch tự động vẫn tạo hàng đợi công việc bình thường.</p></div>}
+  {!projectAiReady&&<div className="ops-warning"><b>Chưa bật bộ não AI</b><p>Thêm và xác minh OpenAI API key riêng của dự án trong tab Kết nối. Lịch tự động vẫn tạo hàng đợi công việc bình thường.</p></div>}
   <section className="panel ops-chat"><div className="ops-toolbar"><h3>Hội thoại với Đốm</h3><select aria-label="Chọn dự án hội thoại" value={selectedProject} onChange={e=>{setSelected(e.target.value);setAnswer("")}}>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div><div className="ops-messages">
    {chatMessages.length===0&&(!answer||answerProject!==selectedProject)&&<div className="ops-placeholder"><Bot size={30}/><b>Đốm đang sẵn sàng nhận hướng dẫn</b><span>Gợi ý: “Lập kế hoạch SEO và social 7 ngày cho Sứ Việt.”</span></div>}
    {chatMessages.slice(-12).map(m=><div key={m.id} className={"ops-bubble "+(m.role==="user"?"self":"assistant")}><small>{m.role==="user"?"Bạn":"Đốm AI"}</small><p>{m.content}</p></div>)}

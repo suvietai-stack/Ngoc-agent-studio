@@ -25,4 +25,7 @@ ALTER TABLE public.task_runs ADD CONSTRAINT runs_project_owner_fk
 ALTER TABLE public.task_runs ADD CONSTRAINT runs_task_same_project_fk
  FOREIGN KEY(task_id,owner_id,project_id) REFERENCES public.tasks(id,owner_id,project_id)
  ON DELETE CASCADE;
+ALTER TABLE public.task_runs ADD CONSTRAINT runs_agent_same_project_fk
+ FOREIGN KEY(agent_id,owner_id,project_id) REFERENCES public.agents(id,owner_id,project_id)
+ ON DELETE SET NULL (agent_id);
 CREATE INDEX IF NOT EXISTS task_runs_project_created_idx ON public.task_runs(owner_id,project_id,created_at DESC);
