@@ -44,3 +44,30 @@ export async function createKnowledgeAction(form:FormData):Promise<Result>{
  try{const {db,user}=await auth();const {error}=await db.from("knowledge_items").insert({...p.data,owner_id:user.id,project_id:p.data.project_id||null});if(error)return fail(err(error));revalidatePath("/");return ok("Đã lưu tri thức; Đốm và các Agent sẽ tham khảo khi tạo nội dung.");}catch(e){return fail(err(e))}
 }
 export async function signOutAction(){const db=await createClient();await db.auth.signOut();revalidatePath("/")}
+
+
+export async function updateKnowledgeAction(id:string,form:FormData):Promise<Result>{
+ if(!z.uuid().safeParse(id).success)return fail("ID tri thức không hợp lệ.");
+ const p=z.object({title:z.string().trim().min(2).max(180),content:z.string().trim().min(20).max(30000)}).safeParse({
+  title:form.get("title"),content:form.get("content")
+ });
+ if(!p.success)return fail("Tiêu đề hoặc nội dung tri thức không hợp lệ.");
+ try{
+  const {db,user}=await auth();
+  const {data,error}=await db.from("knowledge_items").update({...p.data,updated_at:new Date().toISOString()})
+   .eq("id",id).eq("owner_id",user.id).select("id").maybeSingle();
+  if(error||!data)return fail("Không cập nhật được tri thức.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"knowledge.updated",target_table:"knowledge_items",target_id:id});
+  revalidatePath("/");return ok("Đã cập nhật tri thức.");
+ }catch(e){return fail(err(e))}
+}
+export async function deleteKnowledgeAction(id:string):Promise<Result>{
+ if(!z.uuid().safeParse(id).success)return fail("ID tri thức không hợp lệ.");
+ try{
+  const {db,user}=await auth();
+  const {data,error}=await db.from("knowledge_items").delete().eq("id",id).eq("owner_id",user.id).select("id").maybeSingle();
+  if(error||!data)return fail("Không xóa được tri thức.");
+  await db.from("audit_events").insert({owner_id:user.id,actor_id:user.id,event_type:"knowledge.deleted",target_table:"knowledge_items",target_id:id});
+  revalidatePath("/");return ok("Đã xóa mục tri thức.");
+ }catch(e){return fail(err(e))}
+}
