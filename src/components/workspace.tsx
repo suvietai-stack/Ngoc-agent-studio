@@ -19,7 +19,7 @@ const fmt=(d?:string)=>d?new Date(d).toLocaleDateString("vi-VN"):"—";
 function Empty({title,desc,icon:Icon=FolderKanban}:{title:string;desc:string;icon?:React.ElementType}){return <div className="empty"><Icon size={32} strokeWidth={1.3}/><b>{title}</b><p>{desc}</p></div>}
 function Chip({children,active=false}:{children:React.ReactNode;active?:boolean}){return <span className={"chip "+(active?"on":"")}>{children}</span>}
 export function Workspace({initial,email,aiConfigured,encryptionConfigured,envOpenAI,runnerConfigured}:{initial:WorkspaceData;email:string;aiConfigured:boolean;encryptionConfigured:boolean;envOpenAI:boolean;runnerConfigured:boolean}){
- const router=useRouter(),[tab,setTab]=useState<Tab>("home"),[filter,setFilter]=useState("all"),[modal,setModal]=useState<null|"project"|"agent"|"task"|"knowledge">(null),[modalProject,setModalProject]=useState(""),[notice,setNotice]=useState(""),[template,setTemplate]=useState(0),[nav,setNav]=useState(false),[pending,start]=useTransition();
+ const router=useRouter(),[tab,setTab]=useState<Tab>("home"),[filter,setFilter]=useState(initial.projects[0]?.id||"all"),[modal,setModal]=useState<null|"project"|"agent"|"task"|"knowledge">(null),[modalProject,setModalProject]=useState(""),[notice,setNotice]=useState(""),[template,setTemplate]=useState(0),[nav,setNav]=useState(false),[pending,start]=useTransition();
  const names=new Map(initial.projects.map(p=>[p.id,p.name]));
  const list=(rows:Row[])=>rows.filter(x=>filter==="all"||x.id===filter||x.project_id===filter);
  const tasks=list(initial.tasks);

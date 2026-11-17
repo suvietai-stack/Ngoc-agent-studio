@@ -136,8 +136,8 @@ export async function createCampaignAction(projectId:string):Promise<Result>{
  if(!uuid.safeParse(projectId).success)return failure("Chọn dự án để tạo chiến dịch.");
  try{
   const {db,user}=await session();
-  const {data:project}=await db.from("projects").select("id,name").eq("id",projectId).eq("owner_id",user.id).maybeSingle();
-  if(!project)return failure("Không tìm thấy dự án.");
+  const {data:project}=await db.from("projects").select("id,name,status").eq("id",projectId).eq("owner_id",user.id).maybeSingle();
+  if(!project||project.status!=="active")return failure("Chỉ tạo chiến dịch trong dự án đang hoạt động.");
   const {data:agents}=await db.from("agents").select("id,name,project_id").eq("owner_id",user.id).eq("enabled",true).eq("project_id",projectId);
   const templates=[
    {agent:"SEO Agent",title:"SEO: bản đồ từ khóa & cấu trúc nội dung",brief:"Đề xuất nhóm từ khóa, mục đích tìm kiếm, cấu trúc bài và dữ liệu cần đo. Không bịa chỉ số."},
@@ -180,7 +180,14 @@ export async function createScheduleAction(form:FormData):Promise<Result>{
 
 export async function toggleScheduleAction(id:string,enabled:boolean):Promise<Result>{
  if(!uuid.safeParse(id).success)return failure("ID lịch không hợp lệ.");
- try{const {db,user}=await session();const {data,error}=await db.from("automation_schedules").update({enabled}).eq("owner_id",user.id).eq("id",id).select("id").maybeSingle();if(error||!data)return failure("Không cập nhật được lịch.");revalidatePath("/");return success(enabled?"Đã bật lịch tự động.":"Đã tạm dừng lịch.");}catch(e){return failure(message(e))}
+ try{const {db,user}=await session();
+  if(enabled){
+   const {data:s}=await db.from("automation_schedules").select("project_id").eq("owner_id",user.id).eq("id",id).maybeSingle();
+   if(!s)return failure("Không tìm thấy lịch.");
+   const {data:p}=await db.from("projects").select("status").eq("owner_id",user.id).eq("id",s.project_id).maybeSingle();
+   if(!p||p.status!=="active")return failure("Không bật lịch cho dự án tạm dừng hoặc lưu trữ.");
+  }
+  const {data,error}=await db.from("automation_schedules").update({enabled}).eq("owner_id",user.id).eq("id",id).select("id").maybeSingle();if(error||!data)return failure("Không cập nhật được lịch.");revalidatePath("/");return success(enabled?"Đã bật lịch tự động.":"Đã tạm dừng lịch.");}catch(e){return failure(message(e))}
 }
 
 export async function runScheduleNowAction(id:string):Promise<Result>{
@@ -239,8 +246,8 @@ export async function createWorkflowAction(projectId:string,rawTopic:string):Pro
  if(!input.success)return failure("Chọn dự án và nhập chủ đề từ 8 đến 140 ký tự.");
  try{
   const {db,user}=await session();
-  const {data:project,error:projectError}=await db.from("projects").select("id").eq("id",projectId).eq("owner_id",user.id).maybeSingle();
-  if(projectError||!project)return failure("Không tìm thấy dự án có quyền truy cập.");
+  const {data:project,error:projectError}=await db.from("projects").select("id,status").eq("id",projectId).eq("owner_id",user.id).maybeSingle();
+  if(projectError||!project||project.status!=="active")return failure("Workflow yêu cầu dự án đang hoạt động và có quyền truy cập.");
   const {data:agents,error:agentError}=await db.from("agents").select("id,name,project_id").eq("owner_id",user.id).eq("project_id",projectId).eq("enabled",true);
   if(agentError)return failure("Không đọc được danh sách Agent.");
   const eligible=(agents||[]).filter(a=>a.project_id===projectId);
