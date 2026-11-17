@@ -160,3 +160,28 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .workflow-legacy-title h3{font-size:13px;margin:0 0 5px}.workflow-legacy-title p{color:#84929f;margin:0;font-size:11px}
 @media(max-width:950px){.workflow-v2-library{grid-template-columns:1fr}}
 @media(max-width:640px){.workflow-v2-box{padding:12px}.workflow-v2-definition{flex-wrap:wrap}.workflow-v2-definition button{width:100%;justify-content:center}.workflow-v2-heading{flex-direction:column}.workflow-v2-evidence{margin-left:0}.workflow-v2-evidence textarea,.workflow-v2-evidence button{width:100%;flex-basis:100%}}
+
+/* Decision inbox and normalized SEO data — factual, compact and responsive. */
+.decision-inbox{display:grid;gap:15px}
+.decision-inbox-intro{display:flex;justify-content:space-between;align-items:center;gap:20px;background:linear-gradient(110deg,#eef8f6,#f8fbff);border-color:#d5e6e2}
+.decision-inbox-intro h2{font-size:23px;margin:5px 0 8px}
+.decision-inbox-intro p{margin:0;color:#718393;font-size:12px}
+.decision-inbox-intro>strong{font-size:35px;display:grid;text-align:center;color:#267c77;line-height:1.1}
+.decision-inbox-intro>strong small{font-size:10px;color:#718393;font-weight:500;white-space:nowrap}
+.decision-inbox-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.decision-inbox-metric{border:1px solid #e3eaf0;border-radius:11px;padding:16px;background:white;display:grid;gap:8px}
+.decision-inbox-metric>svg{color:#4b8985}.decision-inbox-metric>b{font-size:25px;line-height:1.1}
+.decision-inbox-metric>span{color:#748797;font-size:11px}
+.decision-inbox-list{display:grid;gap:10px}
+.decision-inbox-item{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.decision-inbox-item>div{flex:1;min-width:0}.decision-inbox-item b{font-size:13px}
+.decision-inbox-item p{font-size:11px;color:#75899a;margin:7px 0 0}
+.decision-inbox-item button{min-width:130px;min-height:42px}
+.decision-inbox-empty{text-align:center;display:grid;place-items:center;gap:12px;padding:30px}
+.decision-inbox-empty>svg{color:#398577}.decision-inbox-empty h3{font-size:14px;margin:0}.decision-inbox-empty p{color:#6c8394;font-size:12px;max-width:560px;margin:0}
+.seo2-index-state{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#f8fcfb;border:1px solid #d9e9e5;border-radius:12px;padding:13px 17px}
+.seo2-index-state>div{display:grid;gap:5px;min-width:0}
+.seo2-index-state b{font-size:12px;color:#2a6863}.seo2-index-state small{color:#6c7f8e;font-size:10px}
+.seo2-index-state button{white-space:nowrap;min-height:41px}
+@media(max-width:850px){.decision-inbox-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.decision-inbox-intro{align-items:flex-start}.decision-inbox-intro h2{font-size:19px}.decision-inbox-item{align-items:stretch;flex-direction:column}.decision-inbox-item button{width:100%}.seo2-index-state{flex-direction:column;align-items:stretch}.seo2-index-state button{width:100%}}
