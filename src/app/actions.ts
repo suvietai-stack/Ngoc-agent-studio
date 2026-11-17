@@ -3,6 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {isStudioOwner} from "@/lib/access";
+import {installSeoFirstTemplate} from "@/lib/seo-first-install";
 import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 export type Result={ok:boolean;message:string;projectId?:string};
 const fail=(message:string):Result=>({ok:false,message});
@@ -14,7 +15,18 @@ export async function createProjectAction(form:FormData):Promise<Result>{
  if(!p.success)return fail("Tên hoặc URL dự án chưa hợp lệ.");
  let website:string|null=null;
  if(p.data.website_url){try{website=parsePublicHttpsUrl(p.data.website_url).toString();}catch{return fail("Website dự án phải là địa chỉ HTTPS công khai, không có IP hoặc port tùy chỉnh.");}}
- try{const {db,user}=await auth();const {data,error}=await db.from("projects").insert({...p.data,owner_id:user.id,website_url:website}).select("id").single();if(error||!data)return fail(err(error));revalidatePath("/");return {ok:true,message:"Đã tạo dự án.",projectId:data.id};}catch(e){return fail(err(e))}
+ try{const {db,user}=await auth();const {data,error}=await db.from("projects").insert({...p.data,owner_id:user.id,website_url:website}).select("id").single();if(error||!data)return fail(err(error));
+ let message="Đã tạo dự án.";
+ if(form.get("seo_first_template")==="on"){
+  try{
+   const installed=await installSeoFirstTemplate(db,user.id,data.id);
+   message=`Đã tạo dự án với ${installed.agents} Agent SEO-first và ${installed.schedules} lịch mẫu (đang tắt). Chưa tự chạy AI hoặc đăng bài.`;
+  }catch{
+   message="Đã tạo dự án nhưng chưa cài đủ bộ mẫu SEO-first. Vào Tự động hóa → Cài bộ mẫu để tiếp tục.";
+  }
+ }
+ revalidatePath("/");
+ return {ok:true,message,projectId:data.id};}catch(e){return fail(err(e))}
 }
 const cap=["read","research","draft","edit"] as const; // No external publish/send/delete implementation.
 export async function createAgentAction(form:FormData):Promise<Result>{

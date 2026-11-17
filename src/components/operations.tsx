@@ -6,6 +6,7 @@ import type {WorkspaceData} from "@/lib/types";
 import {askDomAction,createCampaignAction,createScheduleAction,toggleScheduleAction,runScheduleNowAction,approveContentAction,seoAuditAction,updateProjectWebsiteAction,toggleProjectAutoRunAction,updateDraftContentAction} from "@/app/operations";
 import type {Result} from "@/app/actions";
 import {WorkflowBoard} from "@/components/workflows";
+import {applySeoFirstTemplateAction} from "@/app/template-actions";
 
 type Tab="dom"|"automations"|"content";
 export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{tab:Tab;initial:WorkspaceData;filter:string;aiReady:boolean;runnerConfigured:boolean}){
@@ -41,6 +42,7 @@ export function StudioOperations({tab,initial,filter,aiReady,runnerConfigured}:{
       {projects.find(p=>p.id===selectedProject)?.auto_run_enabled?"Tắt tự chạy AI":"Bật tự chạy AI"}</button>
     </div><small>Chế độ cần migration 005, khóa máy chủ riêng và được tắt mặc định cho mỗi dự án.</small>
    </section>
+  <section className="panel seo-template-box"><div className="ops-toolbar"><div><h3>Bộ mẫu phòng Marketing SEO-First</h3><p>18 vai trò chuyên môn SEO, Content, Facebook, Entity, Backlink và chất lượng. Cài bổ sung không ghi đè Agent đã có. 7 lịch mẫu được tạo ở trạng thái tắt.</p></div><button className="primary" type="button" disabled={pending||!selectedProject} onClick={()=>call(()=>applySeoFirstTemplateAction(selectedProject))}><WandSparkles size={16}/> Cài bộ mẫu vào dự án</button></div><small>Không sao chép API key hay dữ liệu dự án khác. Không tự gọi AI, đăng bài hoặc chi ngân sách.</small></section>
   <WorkflowBoard initial={initial} filter={filter} selectedProject={selectedProject} onProjectChange={setSelected} aiReady={projectAiReady}/>
   <div className="ops-toolbar"><div><h3>Lịch tự động có thật</h3><p>Supabase Cron mỗi giờ kiểm tra lịch đến hạn, tạo công việc mới trong hàng đợi. Chạy AI và duyệt nội dung là bước riêng để tránh đăng nhầm.</p></div><button className="primary" onClick={()=>setShowForm(v=>!v)}><Plus size={16}/> Tạo lịch</button></div>
   <div className="panel"><h3>Bắt đầu nhanh</h3><p>Tạo 4 nhiệm vụ chuẩn SEO, Content, Social và Marketing cho dự án đang chọn, không cần API key.</p>
