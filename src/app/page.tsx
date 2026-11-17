@@ -30,7 +30,7 @@ export default async function Home({searchParams}:{searchParams:Promise<{project
  for(let offset=0;offset<maxRecords;offset+=pageSize){
   const result=await db.from("projects").select("*").eq("owner_id",user.id)
    .order("created_at",{ascending:false}).order("id",{ascending:false}).range(offset,offset+pageSize-1);
-  if(result.error)return <Setup migrationError="Không tải được dự án. Kiểm tra cấu hình Supabase và quyền truy cập."/>;
+  if(result.error)return <Setup migrationError={"Không đọc được bảng projects (mã "+(result.error.code||"không rõ")+"). Đây là lỗi truy vấn, không nhất thiết là thiếu migration."}/>;
   projects.push(...(result.data||[]) as Row[]);
   if((result.data||[]).length<pageSize)break;
   if(offset+pageSize>=maxRecords)projectsTruncated=true;
@@ -53,8 +53,11 @@ export default async function Home({searchParams}:{searchParams:Promise<{project
   }
   return {rows,error:null,truncated:true};
  }));
- const error=results.find(r=>r.error);
- if(error?.error)return <Setup migrationError="Database thiếu bảng hoặc không có quyền đọc. Kiểm tra migration và RLS."/>;
+ const failedIndex=results.findIndex(r=>r.error);
+ if(failedIndex!==-1){
+  const detail=results[failedIndex].error;
+  return <Setup migrationError={"Không đọc được bảng "+sources[failedIndex]+" (mã "+(detail?.code||"không rõ")+"). Không cần tạo lại Supabase; hãy kiểm tra chi tiết tại /ket-noi."}/>;
+ }
  const incompleteSources=sources.filter((_,i)=>results[i].truncated);
  const data=Object.fromEntries(sources.map((name,i)=>[name,results[i].rows])) as Record<typeof sources[number],Row[]>;
  const initial:WorkspaceData={
