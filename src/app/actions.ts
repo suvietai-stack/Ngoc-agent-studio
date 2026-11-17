@@ -79,7 +79,7 @@ export async function createKnowledgeAction(form:FormData):Promise<Result>{
  if(!project)return fail("Dự án tri thức không hợp lệ.");
  const {error}=await db.from("knowledge_items").insert({...p.data,owner_id:user.id});if(error)return fail(err(error));revalidatePath("/");return ok("Đã lưu tri thức; Đốm và các Agent sẽ tham khảo khi tạo nội dung.");}catch(e){return fail(err(e))}
 }
-export async function signOutAction(){const db=await createClient();await db.auth.signOut();revalidatePath("/")}
+export async function signOutAction(){const db=await createClient();await db.auth.signOut({scope:"local"});revalidatePath("/")}
 
 
 export async function updateKnowledgeAction(id:string,form:FormData):Promise<Result>{
