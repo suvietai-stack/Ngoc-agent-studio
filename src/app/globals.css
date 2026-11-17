@@ -125,3 +125,38 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 .knowledge-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.knowledge-upload{display:inline-flex;gap:7px;align-items:center;justify-content:center;min-height:42px;cursor:pointer;padding:11px 13px;font-weight:700;font-size:11px;border:1px solid #d6e4eb;border-radius:9px;color:#286e7b;background:#fff}.knowledge-upload input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.knowledge-upload:focus-within{outline:2px solid #347d86;outline-offset:2px}.knowledge-source-note{display:flex;align-items:center;gap:7px;font-size:11px;margin:-8px 0 16px}
 @media(max-width:640px){.knowledge-actions{width:100%}.knowledge-actions>*{flex:1;white-space:normal}}
+
+/* SEO-first workflow v2 — compact, evidence-first, usable on tablet and phone. */
+.workflow-v2-box{background:#f7fbfa;border:1px solid #cfe4df;border-radius:13px;padding:17px;margin:12px 0 21px}
+.workflow-v2-heading{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:14px}
+.workflow-v2-heading h3{font-size:15px;margin:0 0 5px}.workflow-v2-heading p{color:#687f90;font-size:11px;margin:0}
+.workflow-v2-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.workflow-v2-definition{display:flex;gap:9px;justify-content:space-between;align-items:center;border-radius:10px;background:white;border:1px solid #e0ebe8;padding:12px;min-width:0}
+.workflow-v2-definition>div{min-width:0;display:grid;gap:4px}
+.workflow-v2-definition b{font-size:12px;color:#2b4955}.workflow-v2-definition small{font-size:10px;color:#7b8d99}
+.workflow-v2-definition button{white-space:nowrap;min-height:38px;display:flex;gap:6px;align-items:center;font-size:11px}
+.workflow-v2-empty{padding:20px;border:1px dashed #bcd7d1;background:white;border-radius:10px}
+.workflow-v2-empty p{font-size:12px;color:#687d89;margin:7px 0 0}
+.workflow-v2-runs{border-top:1px solid #d7e8e4;margin-top:16px;padding-top:14px}
+.workflow-v2-runs>h3{font-size:14px;margin:0 0 10px}
+.workflow-v2-run{border:1px solid #e1e9e7;background:white;border-radius:10px;margin-bottom:8px}
+.workflow-v2-run>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;list-style:none;padding:13px 15px}
+.workflow-v2-run>summary::-webkit-details-marker{display:none}
+.workflow-v2-run>summary span:first-child{display:grid;gap:5px;min-width:0}
+.workflow-v2-run>summary b{font-size:12px;color:#284753}.workflow-v2-run>summary small{color:#718693;font-size:10px}
+.workflow-v2-steps{border-top:1px solid #e6eeeb;padding:10px 14px}
+.workflow-v2-step{padding:11px 0;border-bottom:1px solid #eff2f3}
+.workflow-v2-step:last-child{border-bottom:0}
+.workflow-v2-step-main{display:flex;align-items:center;gap:12px}
+.workflow-v2-step-main>div{display:grid;gap:4px}
+.workflow-v2-step-main b{font-size:12px}
+.workflow-v2-step-main small{color:#748796;font-size:10px}
+.workflow-v2-step-index{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;background:#edf0f2;color:#658080;font-size:11px;font-weight:800}
+.workflow-v2-step-index.complete{background:#ccece0;color:#287456}
+.workflow-v2-evidence{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;margin:10px 0 0 39px}
+.workflow-v2-evidence textarea{flex:1 1 240px;min-width:0;border:1px solid #d5e3e3;border-radius:8px;padding:10px;font-size:11px}
+.workflow-v2-evidence button{min-height:40px;font-size:11px}
+.workflow-legacy-title{margin:12px 0 10px;padding-top:12px;border-top:1px solid #e4eaea}
+.workflow-legacy-title h3{font-size:13px;margin:0 0 5px}.workflow-legacy-title p{color:#84929f;margin:0;font-size:11px}
+@media(max-width:950px){.workflow-v2-library{grid-template-columns:1fr}}
+@media(max-width:640px){.workflow-v2-box{padding:12px}.workflow-v2-definition{flex-wrap:wrap}.workflow-v2-definition button{width:100%;justify-content:center}.workflow-v2-heading{flex-direction:column}.workflow-v2-evidence{margin-left:0}.workflow-v2-evidence textarea,.workflow-v2-evidence button{width:100%;flex-basis:100%}}
