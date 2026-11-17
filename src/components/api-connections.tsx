@@ -3,7 +3,7 @@ import {useState,useTransition} from "react";
 import {useRouter} from "next/navigation";
 import {CheckCircle2,KeyRound,PlugZap,ShieldCheck,Unplug} from "lucide-react";
 import type {WorkspaceData} from "@/lib/types";
-import {disconnectAction,saveConnectionAction,testConnectionAction} from "@/app/integrations";
+import {disconnectAction,saveConnectionAction,saveOAuthAppConfigAction,testConnectionAction} from "@/app/integrations";
 import type {Provider} from "@/lib/integration-credentials";
 import {OAUTH_PROVIDERS,type OAuthProvider} from "@/lib/oauth-providers";
 type Props={initial:WorkspaceData;filter:string;encryptionConfigured:boolean;envOpenAI:boolean;oauthReady:{google:boolean;meta:boolean;ads:boolean}};
@@ -17,8 +17,18 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI,oa
   ["wordpress","WordPress","Dùng Application Password; chỉ kiểm tra quyền đọc, chưa đăng bài."]
  ];
  const oauthProviders:OAuthProvider[]=["gsc","ga4","drive","google_ads","facebook","instagram"];
+ const googleApp=initial.integrations.find(x=>x.project_id===selected&&x.provider==="google_oauth_app");
+ const metaApp=initial.integrations.find(x=>x.project_id===selected&&x.provider==="meta_oauth_app");
+ const googleReady=Boolean(googleApp)||oauthReady.google;
+ const metaReady=Boolean(metaApp)||oauthReady.meta;
+ const adsReady=oauthReady.ads||Boolean(googleApp?.display_name==="Google OAuth App + Ads");
  function act(fn:()=>Promise<{ok:boolean;message:string}>){
   start(async()=>{try{const res=await fn();setMessage(res.message);router.refresh()}catch{setMessage("Không thực hiện được. Vui lòng thử lại.")}});
+ }
+ function saveOAuthApp(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();
+  const form=e.currentTarget,data=new FormData(form);
+  act(async()=>{const r=await saveOAuthAppConfigAction(data);if(r.ok)form.reset();return r});
  }
  function save(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();const form=e.currentTarget;const data=new FormData(form);
@@ -52,12 +62,43 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI,oa
     </div>
    </article>;
   })}</div>
+
+  <h3 style={{margin:"24px 0 14px"}}>Cấu hình ứng dụng OAuth theo dự án</h3>
+  <p className="muted">Nhập Client ID và Client Secret ngay trên app; dữ liệu được mã hóa riêng cho dự án. Đây là thông tin OAuth App do Google Cloud/Meta cấp, không phải access token cá nhân.</p>
+  <div className="cards integrations">
+   <article className="integration">
+    <div className="card-icon"><KeyRound size={19}/></div>
+    <h3>Google OAuth App</h3>
+    <span className={"chip"+(googleReady?" on":"")}>{googleApp?"Đã lưu trong dự án":oauthReady.google?"Đã cấu hình máy chủ":"Chưa cấu hình"}</span>
+    <p>Dùng cho Search Console, GA4, Drive và Google Ads.</p>
+    <form className="form-stack" onSubmit={saveOAuthApp}>
+     <input type="hidden" name="project_id" value={selected}/><input type="hidden" name="kind" value="google"/>
+     <label>Google OAuth Client ID<input name="client_id" autoComplete="off" maxLength={400} minLength={5} required disabled={!selected||!encryptionConfigured} placeholder="...apps.googleusercontent.com"/></label>
+     <label>Google OAuth Client Secret<input name="client_secret" type="password" autoComplete="new-password" maxLength={4096} minLength={5} required disabled={!selected||!encryptionConfigured} placeholder="Client secret từ Google Cloud"/></label>
+     <label>Google Ads Developer Token (không bắt buộc)<input name="developer_token" type="password" autoComplete="new-password" maxLength={1000} disabled={!selected||!encryptionConfigured} placeholder="Chỉ cần nếu dùng Google Ads"/></label>
+     <button type="submit" className="primary" disabled={pending||!selected||!encryptionConfigured}>Lưu cấu hình Google</button>
+    </form>
+   </article>
+   <article className="integration">
+    <div className="card-icon"><KeyRound size={19}/></div>
+    <h3>Meta OAuth App</h3>
+    <span className={"chip"+(metaReady?" on":"")}>{metaApp?"Đã lưu trong dự án":oauthReady.meta?"Đã cấu hình máy chủ":"Chưa cấu hình"}</span>
+    <p>Dùng cho Facebook Page và tài khoản Instagram Professional.</p>
+    <form className="form-stack" onSubmit={saveOAuthApp}>
+     <input type="hidden" name="project_id" value={selected}/><input type="hidden" name="kind" value="meta"/>
+     <label>Meta App ID<input name="client_id" autoComplete="off" maxLength={400} minLength={5} required disabled={!selected||!encryptionConfigured} placeholder="App ID từ Meta for Developers"/></label>
+     <label>Meta App Secret<input name="client_secret" type="password" autoComplete="new-password" maxLength={4096} minLength={5} required disabled={!selected||!encryptionConfigured} placeholder="App Secret từ Meta"/></label>
+     <button type="submit" className="primary" disabled={pending||!selected||!encryptionConfigured}>Lưu cấu hình Meta</button>
+    </form>
+   </article>
+  </div>
+  <p className="muted">Lưu lại Client ID/Secret mới sẽ ngắt các token OAuth cũ trong dự án và yêu cầu cấp quyền lại. Không có nội dung nào được tự xuất bản.</p>
   <h3 style={{margin:"24px 0 14px"}}>Google, Meta và các nền tảng dữ liệu</h3>
   <p className="muted">Mỗi dự án cấp quyền OAuth riêng, không dùng token của dự án khác. Chỉ xác minh quyền đọc API thực tế; chưa tự đăng bài, quảng cáo hoặc thay đổi dữ liệu bên ngoài.</p>
   <div className="cards integrations">{oauthProviders.map(provider=>{
    const item=OAUTH_PROVIDERS[provider];
    const status=initial.integrations.find(x=>x.project_id===selected&&x.provider===provider)?.connection_status||"disconnected";
-   const ready=provider==="google_ads"?oauthReady.ads:item.kind==="google"?oauthReady.google:oauthReady.meta;
+   const ready=provider==="google_ads"?googleReady&&adsReady:item.kind==="google"?googleReady:metaReady;
    const origin=item.kind==="google"?"Google":"Meta";
    const startUrl="/api/integrations/oauth/start?provider="+encodeURIComponent(provider)+"&project="+encodeURIComponent(selected);
    return <article className="integration" key={provider}>
@@ -65,11 +106,11 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI,oa
     <h3>{item.name}</h3>
     <span className={"chip"+(status==="connected"?" on":"")}>{status==="connected"?"Đã xác minh tài sản":status==="error"?"Thiếu quyền hoặc tài sản":"Chưa kết nối"}</span>
     <p>{item.description}</p>
-    {!ready&&<small>Chưa có cấu hình ứng dụng {origin} OAuth trên Vercel{provider==="google_ads"?" (cần cả Google Ads developer token)":""}.</small>}
+    {!ready&&<small>Chưa có Client ID/Secret {origin} OAuth trong dự án hoặc Vercel{provider==="google_ads"?" (cần Google Ads Developer Token)":""}.</small>}
     <div className="ops-rowbuttons" style={{marginTop:12,justifyContent:"flex-start"}}>
      {ready&&encryptionConfigured&&selected?
       <a className="primary" href={startUrl}><KeyRound size={15}/> {status==="disconnected"?"Kết nối "+origin:"Cấp lại quyền"}</a>:
-      <button type="button" className="ops-outline" disabled title="Cần cấu hình OAuth Client ID và Client Secret trên Vercel trước"><KeyRound size={15}/> Chưa sẵn sàng OAuth</button>}
+      <button type="button" className="ops-outline" disabled title="Lưu Client ID và Client Secret trong form ở trên hoặc cấu hình biến môi trường trên Vercel"><KeyRound size={15}/> Chưa sẵn sàng OAuth</button>}
      <button type="button" disabled={pending||!selected||status==="disconnected"||!ready}
       onClick={()=>act(()=>testConnectionAction(selected,provider))}><CheckCircle2 size={14}/> Kiểm tra</button>
      {status!=="disconnected"&&<button type="button" disabled={pending||!selected}
@@ -80,11 +121,11 @@ export function APIConnections({initial,filter,encryptionConfigured,envOpenAI,oa
   <details className="oauth-setup" style={{marginTop:20}}>
    <summary>Hướng dẫn cấu hình OAuth ứng dụng Google / Meta (thiết lập một lần)</summary>
    <div className="form-stack" style={{marginTop:12}}>
-    <p><b>Google:</b> tạo OAuth Client (Web application) tại <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>, bật API của GSC, GA4, Drive và/hoặc Google Ads. Trên Vercel Environment Variables, đặt <code>GOOGLE_OAUTH_CLIENT_ID</code> và <code>GOOGLE_OAUTH_CLIENT_SECRET</code>.</p>
-    <p><b>Meta:</b> tạo ứng dụng tại <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Meta for Developers</a>, cấu hình Facebook Login for Business, App Review và quyền Trang/Instagram. Trên Vercel đặt <code>META_APP_ID</code> và <code>META_APP_SECRET</code>.</p>
-    <p><b>Google Ads:</b> ngoài Google OAuth còn cần <code>GOOGLE_ADS_DEVELOPER_TOKEN</code> từ Google Ads API Center, và quyền truy cập tài khoản quảng cáo.</p>
+    <p><b>Google:</b> tạo OAuth Client (Web application) tại <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>, bật API của GSC, GA4, Drive và/hoặc Ads. Nhập Client ID/Secret vào form Google ngay trên app. Biến môi trường Vercel cũng được hỗ trợ.</p>
+    <p><b>Meta:</b> tạo ứng dụng tại <a href="https://developers.facebook.com/apps/" target="_blank" rel="noopener noreferrer">Meta for Developers</a>, bật Facebook Login for Business và quyền Trang/Instagram. Nhập App ID/Secret vào form Meta ngay trên app. App Review có thể cần được Meta phê duyệt.</p>
+    <p><b>Google Ads:</b> cần Developer Token từ Google Ads API Center, nhập trong form Google phía trên hoặc đặt biến máy chủ <code>GOOGLE_ADS_DEVELOPER_TOKEN</code>.</p>
     <p><b>Redirect URI cần khai báo chính xác trong Google Cloud và Meta:</b> <code>https://ngoc-agent-studio.vercel.app/api/integrations/oauth/callback</code></p>
-    <small>Client Secret phải nhập trong Vercel (server-only), không dán vào chat. Sau khi thêm biến môi trường, redeploy để bật nút Kết nối.</small>
+    <small>Cấu hình trong app được mã hóa ở máy chủ theo dự án. Nếu dùng biến môi trường Vercel thay thế, thêm biến server-only và triển khai lại. Không dán Client Secret vào chat.</small>
    </div>
   </details>
  </section>;

@@ -90,3 +90,10 @@ These remaining items must be verified against the real provider accounts and pe
 - Current Vercel OAuth app credentials are **not provisioned** until configured by the owner. OAuth code deployment alone cannot connect an actual Google/Meta account. OAuth access and App Review may require provider approval.
 - External data ingestion, account-specific account selection, analytics dashboards, publishing, ad management, or data sync are **not** claimed implemented by OAuth authorization alone.
 - Pinned runtime Node.js 22.x to match GitHub CI and prevent untested major upgrades.
+
+### In-app OAuth Client Configuration
+
+- The **Kết nối** tab now has secure Google and Meta OAuth App configuration forms, stored encrypted per project under `google_oauth_app` / `meta_oauth_app` provider records.
+- Credentials in the project vault take priority over optional Vercel environment credentials. Google Ads developer token can be entered in the Google form.
+- Changing a project's OAuth app credentials deletes old provider tokens/status for that project, requiring re-consent. It does not touch other projects.
+- Configure Google/Meta authorized callback URL `https://ngoc-agent-studio.vercel.app/api/integrations/oauth/callback` before clicking Connect; OAuth app registration and provider App Review cannot be automated without owner access.
