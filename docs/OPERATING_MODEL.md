@@ -78,3 +78,22 @@ On failure: `running` → `failed`, review errors and retry where appropriate.
 6. Document ingestion, retrieval indexing, Agent evaluation, alerts and performance/cost reporting.
 
 These remaining items must be verified against the real provider accounts and permissions. Do not mark them operational based on mock output.
+
+## OAuth integrations (read-only, per-project)
+
+- Authenticated owner-only endpoints: `/api/integrations/oauth/start` and `/api/integrations/oauth/callback`.
+- Google OAuth applications require `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`; Meta requires `META_APP_ID`, `META_APP_SECRET`; Google Ads also requires `GOOGLE_ADS_DEVELOPER_TOKEN`. Set these only in Vercel server environment variables, never in browser or GitHub.
+- Register `https://ngoc-agent-studio.vercel.app/api/integrations/oauth/callback` as an authorized redirect URI for both providers. `NEXT_PUBLIC_SITE_URL` must match the production domain.
+- OAuth consent uses a random state nonce in short-lived HttpOnly/Secure/SameSite=Lax cookie; callback revalidates owner and project. Provider tokens are encrypted per project and not displayed after saving.
+- Permissions: read-only GSC/GA4/Drive; Google Ads OAuth can authorize broad scope but our code only calls read-only customers:listAccessibleCustomers and never modifies ads. Meta requests only pages_show_list/pages_read_engagement/instagram_basic, no publish permissions.
+- Status `connected` means a real provider API call succeeded and an accessible asset was found (except Drive, which verifies read metadata permission). Empty accounts, missing API enablement or denied scopes remain `error` and can be retested.
+- Current Vercel OAuth app credentials are **not provisioned** until configured by the owner. OAuth code deployment alone cannot connect an actual Google/Meta account. OAuth access and App Review may require provider approval.
+- External data ingestion, account-specific account selection, analytics dashboards, publishing, ad management, or data sync are **not** claimed implemented by OAuth authorization alone.
+- Pinned runtime Node.js 22.x to match GitHub CI and prevent untested major upgrades.
+
+### In-app OAuth Client Configuration
+
+- The **Kết nối** tab now has secure Google and Meta OAuth App configuration forms, stored encrypted per project under `google_oauth_app` / `meta_oauth_app` provider records.
+- Credentials in the project vault take priority over optional Vercel environment credentials. Google Ads developer token can be entered in the Google form.
+- Changing a project's OAuth app credentials deletes old provider tokens/status for that project, requiring re-consent. It does not touch other projects.
+- Configure Google/Meta authorized callback URL `https://ngoc-agent-studio.vercel.app/api/integrations/oauth/callback` before clicking Connect; OAuth app registration and provider App Review cannot be automated without owner access.

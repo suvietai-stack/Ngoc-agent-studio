@@ -3,8 +3,9 @@ import {createCipheriv,createDecipheriv,randomBytes} from "node:crypto";
 import {publicHttpsGet} from "@/lib/public-http";
 import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 import type {SupabaseClient} from "@supabase/supabase-js";
+import type {OAuthProvider} from "@/lib/oauth-providers";
 
-export type Provider="openai"|"wordpress";
+export type Provider="openai"|"wordpress"|"google_oauth_app"|"meta_oauth_app"|OAuthProvider;
 export function encryptionReady():boolean {
  const key=process.env.INTEGRATION_ENCRYPTION_KEY;
  if(!key)return false;
@@ -54,6 +55,7 @@ export async function verifyConnection(provider:Provider,credentials:Record<stri
   const result=await fetch("https://api.openai.com/v1/models",{headers:{Authorization:"Bearer "+credentials.apiKey},cache:"no-store",signal:AbortSignal.timeout(12000)});
   return result.ok;
  }
+ if(provider!=="wordpress")throw new Error("Dịch vụ này phải kiểm tra qua OAuth.");
  if(!website)throw new Error("Dự án chưa có website HTTPS.");
  const url=parsePublicHttpsUrl(website);
  const endpoint=new URL("/wp-json/wp/v2/users/me",url.origin);
