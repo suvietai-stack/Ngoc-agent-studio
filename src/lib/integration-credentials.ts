@@ -53,7 +53,10 @@ export async function getOpenAIKey(db:SupabaseClient,ownerId:string,projectId:st
 export async function verifyConnection(provider:Provider,credentials:Record<string,string>,website?:string|null):Promise<boolean>{
  if(provider==="openai"){
   const result=await fetch("https://api.openai.com/v1/models",{headers:{Authorization:"Bearer "+credentials.apiKey},cache:"no-store",signal:AbortSignal.timeout(12000)});
-  return result.ok;
+  if(result.status===401)throw new Error("OpenAI từ chối API key (401). Hãy thay khóa trong tab Kết nối.");
+  if(result.status===429)throw new Error("OpenAI giới hạn hạn mức (429). Hãy kiểm tra billing và quota.");
+  if(!result.ok)throw new Error("OpenAI chưa xác minh được (HTTP "+result.status+").");
+  return true;
  }
  if(provider!=="wordpress")throw new Error("Dịch vụ này phải kiểm tra qua OAuth.");
  if(!website)throw new Error("Dự án chưa có website HTTPS.");
@@ -63,5 +66,9 @@ export async function verifyConnection(provider:Provider,credentials:Record<stri
  const response=await publicHttpsGet(endpoint.toString(),{
   maxBytes:64000,timeoutMs:12000,headers:{Authorization:"Basic "+authorization,Accept:"application/json"}
  });
- return response.status>=200&&response.status<300;
+ if(response.status===401)throw new Error("WordPress báo HTTP 401: kiểm tra username, Application Password và tính năng REST API.");
+ if(response.status===403)throw new Error("WordPress báo HTTP 403: kiểm tra quyền tài khoản, firewall hoặc plugin bảo mật.");
+ if(response.status===404)throw new Error("WordPress báo HTTP 404: cần bật REST API (/wp-json/wp/v2/users/me).");
+ if(response.status<200||response.status>=300)throw new Error("WordPress chưa xác minh được (HTTP "+response.status+").");
+ return true;
 }
