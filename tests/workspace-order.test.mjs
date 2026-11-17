@@ -23,3 +23,10 @@ test("Setup no longer misleadingly asks to create a new Supabase project",()=>{
  assert.doesNotMatch(setup,/Tạo Supabase project mới|Chưa kết nối database cá nhân/);
  assert.match(setup,/Kiểm tra kết nối/);
 });
+
+test("Project screen reports actual failing table and code instead of requiring migration",()=>{
+ const page=source("src/app/page.tsx");
+ assert.match(page,/sources\[failedIndex\]/);
+ assert.match(page,/detail\?\.code/);
+ assert.doesNotMatch(page,/Database thiếu bảng hoặc không có quyền đọc/);
+});
