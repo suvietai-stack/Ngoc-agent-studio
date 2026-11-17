@@ -2,11 +2,11 @@ import "server-only";
 
 type MessageContent={type?:string;text?:string};
 type ResponseItem={type?:string;content?:MessageContent[]};
-type ModelResponse={output?:ResponseItem[];output_text?:string;error?:{message?:string}};
+type ModelResponse={output?:ResponseItem[];output_text?:string;usage?:{input_tokens?:number;output_tokens?:number};error?:{message?:string}};
 
 export const aiReady=()=>Boolean(process.env.OPENAI_API_KEY?.trim());
 
-export async function generateText(instructions:string,input:string,requestedModel?:string):Promise<{text:string;model:string}>{
+export async function generateText(instructions:string,input:string,requestedModel?:string):Promise<{text:string;model:string;usage?:{input_tokens:number;output_tokens:number}}>{
  const key=process.env.OPENAI_API_KEY;
  if(!key)throw new Error("AI chưa kích hoạt: cần thêm OPENAI_API_KEY trong Vercel → Environment Variables và triển khai lại.");
  if(input.length>24000)throw new Error("Nội dung đầu vào quá dài.");
@@ -25,7 +25,10 @@ export async function generateText(instructions:string,input:string,requestedMod
   if(!response.ok)throw new Error(response.status===401?"OPENAI_API_KEY không hợp lệ.":response.status===429?"AI hết hạn mức hoặc đang bị giới hạn; kiểm tra billing.":`AI API lỗi HTTP ${response.status}.`);
   const textOut=data.output_text||data.output?.filter(x=>x.type==="message").flatMap(x=>x.content||[]).filter(x=>x.type==="output_text").map(x=>x.text||"").join("\n")||"";
   if(!textOut.trim())throw new Error("AI không trả nội dung; hãy thử lại.");
-  return {text:textOut.trim(),model};
+  const usage=data.usage&&Number.isInteger(data.usage.input_tokens)&&Number.isInteger(data.usage.output_tokens)
+   ?{input_tokens:Math.max(0,data.usage.input_tokens!),output_tokens:Math.max(0,data.usage.output_tokens!)}
+   :undefined;
+  return {text:textOut.trim(),model,usage};
  }catch(e){
   if(e instanceof Error&&e.name==="AbortError")throw new Error("AI phản hồi quá lâu, hãy thử lại.");
   throw e;
