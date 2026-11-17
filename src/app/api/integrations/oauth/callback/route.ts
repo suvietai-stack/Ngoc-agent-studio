@@ -1,10 +1,10 @@
 import {NextRequest,NextResponse} from "next/server";
-import {z} from "zod";
 import {createClient} from "@/lib/supabase/server";
 import {isStudioOwner} from "@/lib/access";
 import {encryptCredentials} from "@/lib/integration-credentials";
 import {exchangeOAuthCode,verifyOAuth} from "@/lib/oauth-server";
 import {isOAuthProvider,OAUTH_PROVIDERS} from "@/lib/oauth-providers";
+import {parseOAuthState} from "@/lib/oauth-state.mjs";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 export async function GET(req:NextRequest){
@@ -13,13 +13,8 @@ export async function GET(req:NextRequest){
  let provider="";
  const raw=req.cookies.get("nas_oauth_state")?.value;
  try{
-  if(!raw||raw.length>1200)throw new Error("Missing OAuth state");
-  const state:unknown=JSON.parse(Buffer.from(raw,"base64url").toString("utf8"));
-  if(!state||typeof state!=="object")throw new Error("Invalid OAuth state");
-  const s=state as Record<string,unknown>;
-  if(typeof s.provider!=="string"||!isOAuthProvider(s.provider)||!z.uuid().safeParse(s.projectId).success||
-   typeof s.nonce!=="string"||s.nonce.length<32||req.nextUrl.searchParams.get("state")!==s.nonce)
-   throw new Error("OAuth state invalid");
+  const s=parseOAuthState(raw,req.nextUrl.searchParams.get("state"),Object.keys(OAUTH_PROVIDERS));
+  if(!s||!isOAuthProvider(s.provider))throw new Error("Invalid OAuth state");
   projectId=String(s.projectId);provider=s.provider;
   if(req.nextUrl.searchParams.get("error"))throw new Error("OAuth access denied");
   const code=req.nextUrl.searchParams.get("code");

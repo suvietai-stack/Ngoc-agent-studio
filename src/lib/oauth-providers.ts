@@ -14,5 +14,5 @@ export function isOAuthProvider(value:string):value is OAuthProvider{
 export function oauthReadyFlags():{google:boolean;meta:boolean;ads:boolean}{
  const google=Boolean(process.env.GOOGLE_OAUTH_CLIENT_ID&&process.env.GOOGLE_OAUTH_CLIENT_SECRET);
  return {google,meta:Boolean(process.env.META_APP_ID&&process.env.META_APP_SECRET),
-  ads:google&&Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN)};
+  ads:Boolean(process.env.GOOGLE_ADS_DEVELOPER_TOKEN)};
 }

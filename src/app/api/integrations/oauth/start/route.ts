@@ -6,6 +6,7 @@ import {isStudioOwner} from "@/lib/access";
 import {encryptionReady} from "@/lib/integration-credentials";
 import {authorizationUrl} from "@/lib/oauth-server";
 import {isOAuthProvider} from "@/lib/oauth-providers";
+import {packOAuthState} from "@/lib/oauth-state.mjs";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
 export async function GET(req:NextRequest){
@@ -23,7 +24,7 @@ export async function GET(req:NextRequest){
  try{
   const url=await authorizationUrl(provider,nonce,{db,ownerId:user.id,projectId});
   const response=NextResponse.redirect(url);
-  response.cookies.set("nas_oauth_state",Buffer.from(JSON.stringify({provider,projectId,nonce})).toString("base64url"),{
+  response.cookies.set("nas_oauth_state",packOAuthState({provider,projectId,nonce}),{
    httpOnly:true,secure:true,sameSite:"lax",maxAge:600,path:"/api/integrations/oauth/callback"
   });
   response.headers.set("Cache-Control","no-store");
