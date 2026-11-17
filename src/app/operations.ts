@@ -6,6 +6,7 @@ import {generateText} from "@/lib/ai";
 import {getOpenAIKey} from "@/lib/integration-credentials";
 import {auditWebsite} from "@/lib/seo";
 import {parseAuditV2} from "@/lib/seo-audit-v2.mjs";
+import {indexSeoAudit} from "@/lib/seo-index";
 import {parsePublicHttpsUrl} from "@/lib/network-safety.mjs";
 import {isStudioOwner} from "@/lib/access";
 import type {Result} from "@/app/actions";
@@ -272,11 +273,36 @@ export async function seoAuditAction(projectId:string,mode:"quick"|"extended"="q
   const parsed=parseAuditV2(report);
   if(!parsed)return failure("Kết quả Audit không hợp lệ, chưa lưu.");
   const title=("SEO Audit "+(mode==="extended"?"mở rộng":"nhanh")+": "+project.name).slice(0,180);
-  const {error}=await db.from("content_assets").insert({owner_id:user.id,project_id:project.id,channel:"seo-audit",title,body:report,status:"draft"});
-  if(error)return failure("Không lưu được báo cáo SEO.");
+  const {data:asset,error}=await db.from("content_assets").insert({owner_id:user.id,project_id:project.id,channel:"seo-audit",title,body:report,status:"draft"}).select("id").single();
+  if(error||!asset)return failure("Không lưu được báo cáo SEO.");
+  let indexingNote="";
+  try{
+   const indexed=await indexSeoAudit(db,user.id,project.id,asset.id,parsed);
+   indexingNote=" Đã lập chỉ mục "+indexed.urls+" URL và "+indexed.findings+" nhóm lỗi.";
+  }catch{
+   indexingNote=" Báo cáo đã lưu nhưng chỉ mục SEO chưa hoàn tất; bấm Đồng bộ lại trong trang SEO để xử lý.";
+  }
   revalidatePath("/");
-  return success("Đã kiểm tra "+parsed.summary.scanned+" URL thực tế, ghi nhận "+parsed.summary.severity.high+" vấn đề cần xác minh ưu tiên cao và "+parsed.summary.severity.medium+" cảnh báo. Xem tại SEO Website.");
+  return success("Đã quét "+parsed.summary.scanned+" URL thực tế, "+parsed.summary.severity.high+" vấn đề mức cao, "+parsed.summary.severity.medium+" cảnh báo."+indexingNote);
  }catch(e){return failure("Audit SEO: "+message(e))}
+}
+
+/** Repair or backfill normalized URL/finding indexes from an already-saved audit.
+ * No external HTTP requests or AI spending.
+ */
+export async function reindexSeoAuditAction(projectId:string,assetId:string):Promise<Result>{
+ if(!uuid.safeParse(projectId).success||!uuid.safeParse(assetId).success)return failure("Dự án hoặc báo cáo không hợp lệ.");
+ try{
+  const {db,user}=await session();
+  const {data:asset}=await db.from("content_assets").select("id,body").eq("owner_id",user.id)
+   .eq("project_id",projectId).eq("id",assetId).eq("channel","seo-audit").maybeSingle();
+  if(!asset)return failure("Không tìm thấy báo cáo thuộc dự án này.");
+  const parsed=parseAuditV2(asset.body);
+  if(!parsed)return failure("Chỉ có thể lập chỉ mục cho Audit cấu trúc V2.");
+  const result=await indexSeoAudit(db,user.id,projectId,assetId,parsed);
+  revalidatePath("/");
+  return success("Đồng bộ thành công: "+result.urls+" URL, "+result.findings+" nhóm vấn đề. Không gọi AI.");
+ }catch(e){return failure("Không đồng bộ được dữ liệu SEO: "+message(e))}
 }
 
 /** Turn verified HTML audit findings into a bounded, manually run work queue.
