@@ -65,3 +65,24 @@ Chỉ chạy migrations ở Supabase project `ngoc-agent-studio-db`. Tuyệt đ�
 - Mọi lần chạy vẫn yêu cầu người dùng nhấn **Chạy AI**. Không tự đăng, gửi, xóa dữ liệu hay tự chạy API ngầm.
 - Migration cần áp dụng **chỉ trên** Supabase `ngoc-agent-studio-db`: `supabase/migrations/202611170003_agent_workflows.sql`.
 - Luồng phát hành: nhánh tính năng → kiểm tra preview Vercel → PR về `main` → production.
+
+
+## v4 — Trung tâm API và an toàn Agent
+- Kết nối OpenAI và WordPress ngay trong tab **Kết nối**, theo từng dự án.
+- Secrets mã hóa AES-256-GCM trước khi lưu vào bảng \`integration_secrets\`; không có API đọc plaintext, không dùng \`NEXT_PUBLIC_\` cho khóa.
+- Server environment variable bắt buộc để lưu khóa: \`INTEGRATION_ENCRYPTION_KEY\` = Base64 của 32 byte ngẫu nhiên (có thể tạo trên máy quản trị bằng \`openssl rand -base64 32\`).
+- Chạy migration \`supabase/migrations/202611170004_api_connections.sql\` trên **ngoc-agent-studio-db** trước khi triển khai UI mới.
+- Sau khi lưu, nhấn **Kiểm tra** để xác minh OpenAI models endpoint hoặc WordPress user endpoint. Đây chỉ là request xác minh, không đăng bài.
+- OAuth Google/Meta cần thêm app credentials, consent screen và callback riêng trước khi bật; không dán access token vào các form chưa hỗ trợ.
+- AI run có thể dùng OpenAI API key riêng theo dự án hoặc \`OPENAI_API_KEY\` máy chủ. Đốm lấy ngữ cảnh theo dự án; không được mượn Agent của dự án khác.
+- Chỉ push branch tính năng, chạy typecheck/build, kiểm tra Vercel Preview rồi mới merge vào \`main\`. Không triển khai migration lên Base Sứ Việt.
+
+
+## v5 — AI draft automation (opt-in, scheduled)
+- Migration 005 adds projects.auto_run_enabled, default **false** for all projects.
+- Vercel Cron runs once daily at 02:00 UTC (Hobby plan). Supabase Cron continues to queue draft tasks hourly.
+- Server-only environment: SUPABASE_SERVICE_ROLE_KEY from **ngoc-agent-studio-db**, STUDIO_OWNER_UID, CRON_SECRET, AUTO_AGENT_RUNNER_ENABLED=true. Never expose service role or cron secret in NEXT_PUBLIC_.
+- The worker refuses any database host other than zvbwknltooymuenpvptr.supabase.co.
+- Enable automatic drafting per project from Tự động hóa after configuring keys/migrations; limit AUTO_AI_DAILY_LIMIT (default 3, max 20) runs/day, skip blocked workflow stages and jobs with 3 failed executions.
+- Auto jobs create **drafts only**, with mandatory human approval. No publishing/sending/deleting.
+- Draft content is editable before approval; approved outputs are immutable.
