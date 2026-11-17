@@ -16,7 +16,7 @@ test("AI field proposals are bounded plain text and H1 is escaped",()=>{
  for(const bad of ["<script>alert(1)</script>","ngắn","Dòng một\n<script>x</script>"]){
   assert.throws(()=>cleanWpProposal(bad,"post_title"));
  }
- const h=buildSafeH1Content("<p>Giới thiệu</p>","Bộ ấm chén & quà tặng doanh nghiệp");
+ const h=buildSafeH1Content("<p>Giới thiệu bộ sưu tập sản phẩm của Sứ Việt.</p>","Bộ ấm chén & quà tặng doanh nghiệp");
  assert.match(h,/&amp;/);
  assert.match(h,/<!-- wp:heading/);
  assert.throws(()=>buildSafeH1Content("<h1>Đã có</h1>","Bộ ấm chén quà tặng doanh nghiệp"));
